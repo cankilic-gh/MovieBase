@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
     
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -17,13 +17,13 @@
           extend: {
             colors: {
               cyber: {
-                black: '#030005', // Warmer, deep void
-                dark: '#0f0505',  // Reddish dark
-                panel: '#1a0b0b', // Warm panel
-                cyan: '#ffaa00',  // RENAMED LOGICALLY TO AMBER (keeping key for compatibility)
-                purple: '#ff003c', // RENAMED LOGICALLY TO CRIMSON (keeping key for compatibility)
-                green: '#ffD700', // Gold accent
-                red: '#ff4d00',   // Orange red
+                black: '#030005',
+                dark: '#0f0505',
+                panel: '#1a0b0b',
+                cyan: '#ffaa00', // Amber
+                purple: '#ff003c', // Crimson
+                green: '#ffD700', // Gold
+                red: '#ff4d00',
               }
             },
             fontFamily: {
@@ -35,14 +35,13 @@
               'holographic': "linear-gradient(135deg, rgba(255, 170, 0, 0.1) 0%, rgba(255,0,60,0.01) 100%)",
             },
             boxShadow: {
-              'neon-cyan': '0 0 10px rgba(255, 170, 0, 0.5), 0 0 20px rgba(255, 170, 0, 0.3)', // Now Amber Glow
-              'neon-purple': '0 0 10px rgba(255, 0, 60, 0.5), 0 0 20px rgba(255, 0, 60, 0.3)', // Now Crimson Glow
+              'neon-cyan': '0 0 10px rgba(255, 170, 0, 0.5), 0 0 20px rgba(255, 170, 0, 0.3)',
+              'neon-purple': '0 0 10px rgba(255, 0, 60, 0.5), 0 0 20px rgba(255, 0, 60, 0.3)',
             },
             animation: {
               'glitch': 'glitch 1s linear infinite',
               'glitch-1': 'glitch-1 2.5s infinite linear alternate-reverse',
               'glitch-2': 'glitch-2 3s infinite linear alternate-reverse',
-              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             },
             keyframes: {
               glitch: {
@@ -99,12 +98,15 @@
     "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "vite": "https://esm.sh/vite@^7.3.0"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
