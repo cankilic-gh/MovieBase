@@ -22,7 +22,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-cyber-black via-cyber-black/50 to-transparent z-10" />
         
         <img 
-            src="https://images.unsplash.com/photo-1574375927938-d5a98e8efe85?q=80&w=2669&auto=format&fit=crop"
+            src="/store.png"
             alt="Cyberpunk Video Store"
             className="w-full h-full object-cover opacity-80"
         />
