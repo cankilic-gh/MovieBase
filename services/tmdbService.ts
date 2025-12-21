@@ -1,7 +1,6 @@
 import { Movie, ApiResponse, MediaType } from '../types';
 
-const API_KEY = '0893e0e0ac70aa86ede89ce147d42782';
-const ACCESS_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwODkzZTBlMGFjNzBhYTg2ZWRlODljZTE0N2Q0Mjc4MiIsIm5iZiI6MTc2NDY5MzY3Ny44MDQsInN1YiI6IjY5MmYxNmFkZWQzYTc0MTRiMjUxMjc3NCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.B2Fe3qLejRepgKxvc1oPcLkC_MT21l9lQUyiq3wbJ98';
+const ACCESS_TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN || '';
 
 const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
