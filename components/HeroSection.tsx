@@ -21,9 +21,12 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
         <div className="absolute inset-0 bg-cyber-black/70 z-10 mix-blend-multiply" />
         <div className="absolute inset-0 bg-gradient-to-t from-cyber-black via-cyber-black/50 to-transparent z-10" />
         
-        <img 
-            src="/store.png"
-            alt="Cyberpunk Video Store"
+        <video 
+            src="/store.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
             className="w-full h-full object-cover opacity-80"
         />
         
