@@ -40,6 +40,8 @@
             },
             animation: {
               'glitch': 'glitch 1s linear infinite',
+              'glitch-1': 'glitch-1 2.5s infinite linear alternate-reverse',
+              'glitch-2': 'glitch-2 3s infinite linear alternate-reverse',
               'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             },
             keyframes: {
@@ -47,6 +49,22 @@
                 '2%, 64%': { transform: 'translate(2px,0) skew(0deg)' },
                 '4%, 60%': { transform: 'translate(-2px,0) skew(0deg)' },
                 '62%': { transform: 'translate(0,0) skew(5deg)' },
+              },
+              'glitch-1': {
+                '0%': { clipPath: 'inset(20% 0 80% 0)', transform: 'translate(-2px, 1px)' },
+                '20%': { clipPath: 'inset(60% 0 10% 0)', transform: 'translate(2px, -1px)' },
+                '40%': { clipPath: 'inset(40% 0 50% 0)', transform: 'translate(-2px, 2px)' },
+                '60%': { clipPath: 'inset(80% 0 5% 0)', transform: 'translate(2px, -2px)' },
+                '80%': { clipPath: 'inset(10% 0 70% 0)', transform: 'translate(-1px, 1px)' },
+                '100%': { clipPath: 'inset(30% 0 50% 0)', transform: 'translate(1px, -1px)' },
+              },
+              'glitch-2': {
+                '0%': { clipPath: 'inset(10% 0 60% 0)', transform: 'translate(2px, -1px)' },
+                '20%': { clipPath: 'inset(80% 0 5% 0)', transform: 'translate(-2px, 1px)' },
+                '40%': { clipPath: 'inset(30% 0 20% 0)', transform: 'translate(2px, 2px)' },
+                '60%': { clipPath: 'inset(10% 0 80% 0)', transform: 'translate(-2px, -2px)' },
+                '80%': { clipPath: 'inset(50% 0 30% 0)', transform: 'translate(1px, 1px)' },
+                '100%': { clipPath: 'inset(70% 0 10% 0)', transform: 'translate(-1px, -1px)' },
               }
             }
           }

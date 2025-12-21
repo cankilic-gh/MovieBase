@@ -47,10 +47,9 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
       let newMovies: Movie[] = [];
       
       if (searchQuery) {
-        // Simple search (no pagination in this MVP mock logic)
         if (page === 1) {
             newMovies = await searchMovies(searchQuery);
-            setHasMore(false); // Assume 1 page for search
+            setHasMore(false);
         }
       } else {
         newMovies = await fetchMovies(page, filterType);
@@ -76,18 +75,54 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
             </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        {/* Grid Layout Container */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 auto-rows-auto">
             {movies.map((movie, index) => {
+                // Layout Logic:
+                // Index 0: Full Width Hero (Backdrop Image)
+                // Index 1: Large Vertical (2 cols, 2 rows)
+                // Index 2-5: Standard Vertical (1 col)
+                // Index > 5: Standard Grid
+
+                let gridClass = "col-span-1";
+                let cardVariant: 'standard' | 'featured' | 'large' = 'standard';
+
+                if (!searchQuery && page === 1 || (searchQuery && index < 6)) {
+                     if (index === 0) {
+                        gridClass = "col-span-2 md:col-span-4 h-[50vh] md:h-[600px]"; 
+                        cardVariant = 'featured';
+                    } else if (index === 1) {
+                        gridClass = "col-span-2 md:col-span-2 md:row-span-2 aspect-[2/3]";
+                        cardVariant = 'large';
+                    } else if (index > 1 && index < 6) {
+                        gridClass = "col-span-1 aspect-[2/3]";
+                        cardVariant = 'standard';
+                    } else {
+                        gridClass = "col-span-1 aspect-[2/3]";
+                    }
+                } else {
+                     // Infinite scroll items
+                     gridClass = "col-span-1 aspect-[2/3]";
+                }
+
+                const content = (
+                    <MovieCard 
+                        movie={movie} 
+                        onClick={onMovieClick} 
+                        variant={cardVariant}
+                    />
+                );
+
                 if (movies.length === index + 1) {
                     return (
-                        <div ref={lastMovieElementRef} key={`${movie.id}-${index}`}>
-                            <MovieCard movie={movie} onClick={onMovieClick} />
+                        <div ref={lastMovieElementRef} key={`${movie.id}-${index}`} className={gridClass}>
+                            {content}
                         </div>
                     );
                 } else {
                     return (
-                        <div key={`${movie.id}-${index}`}>
-                            <MovieCard movie={movie} onClick={onMovieClick} />
+                        <div key={`${movie.id}-${index}`} className={gridClass}>
+                            {content}
                         </div>
                     );
                 }
