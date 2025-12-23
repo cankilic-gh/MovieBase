@@ -69,31 +69,119 @@ export const fetchMovies = async (page: number, type: MediaType = 'all'): Promis
   }
 };
 
+// Helper function to calculate relevance score
+const calculateRelevanceScore = (title: string, query: string): number => {
+    const titleLower = title.toLowerCase();
+    const queryLower = query.toLowerCase();
+    const queryWords = queryLower.split(/\s+/).filter(w => w.length > 0);
+    const titleWords = titleLower.split(/\s+/).filter(w => w.length > 0);
+    
+    // Exact match gets highest score
+    if (titleLower === queryLower) return 1000;
+    
+    // Starts with query gets high score
+    if (titleLower.startsWith(queryLower)) return 500;
+    
+    // Contains full query gets medium-high score
+    if (titleLower.includes(queryLower)) return 300;
+    
+    // Check if all query words appear in title (for "john wick" -> "John Wick")
+    const allWordsMatch = queryWords.every(qw => 
+        titleWords.some(tw => tw.includes(qw) || qw.includes(tw))
+    );
+    if (allWordsMatch) return 200;
+    
+    // Check if any query word appears in title (for "john" or "wick" -> "John Wick")
+    const anyWordMatch = queryWords.some(qw => 
+        titleWords.some(tw => tw.includes(qw) || qw.includes(tw))
+    );
+    if (anyWordMatch) return 100;
+    
+    // Partial character match (fuzzy)
+    let charMatches = 0;
+    for (const char of queryLower) {
+        if (titleLower.includes(char)) charMatches++;
+    }
+    if (charMatches > 0) return charMatches / queryLower.length * 50;
+    
+    return 0;
+};
+
 export const searchMovies = async (query: string): Promise<Movie[]> => {
     if (!query) return [];
     
     try {
-        const endpoint = `/search/multi?query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=1`;
-        const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
+        const queryTrimmed = query.trim();
+        const queryWords = queryTrimmed.split(/\s+/).filter(w => w.length > 0);
         
-        if (!res.ok) throw new Error("Search failed");
-
-        const data = await res.json();
-
-        // Filter out 'person' results and normalize
-        const normalizedResults: Movie[] = data.results
-            .filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv')
-            .map((item: any) => ({
-                id: item.id,
-                title: item.title || item.name,
-                poster_path: item.poster_path,
-                backdrop_path: item.backdrop_path,
-                overview: item.overview,
-                vote_average: item.vote_average,
-                release_date: item.release_date || item.first_air_date || 'TBA',
-                genre_ids: item.genre_ids,
-                media_type: item.media_type
-            })).map(assignPlatform);
+        // Perform multiple searches: full query + individual words
+        const searchQueries = [
+            queryTrimmed, // Full query first
+            ...queryWords // Then individual words
+        ];
+        
+        // Remove duplicates
+        const uniqueQueries = Array.from(new Set(searchQueries));
+        
+        // Fetch results for all queries in parallel
+        const searchPromises = uniqueQueries.map(async (searchQuery) => {
+            try {
+                const endpoint = `/search/multi?query=${encodeURIComponent(searchQuery)}&include_adult=false&language=en-US&page=1`;
+                const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
+                
+                if (!res.ok) return [];
+                
+                const data = await res.json();
+                
+                // Filter out 'person' results and normalize
+                return data.results
+                    .filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv')
+                    .map((item: any) => ({
+                        id: item.id,
+                        title: item.title || item.name,
+                        poster_path: item.poster_path,
+                        backdrop_path: item.backdrop_path,
+                        overview: item.overview,
+                        vote_average: item.vote_average,
+                        release_date: item.release_date || item.first_air_date || 'TBA',
+                        genre_ids: item.genre_ids,
+                        media_type: item.media_type
+                    }));
+            } catch (error) {
+                console.error(`Search error for query "${searchQuery}"`, error);
+                return [];
+            }
+        });
+        
+        const allResults = await Promise.all(searchPromises);
+        
+        // Flatten and deduplicate by ID
+        const movieMap = new Map<number, any>();
+        
+        allResults.flat().forEach((item: any) => {
+            if (!movieMap.has(item.id)) {
+                movieMap.set(item.id, item);
+            }
+        });
+        
+        // Convert to array and calculate relevance scores
+        const moviesWithScores = Array.from(movieMap.values()).map((item: any) => ({
+            ...item,
+            relevanceScore: calculateRelevanceScore(item.title || item.name, queryTrimmed)
+        }));
+        
+        // Sort by relevance score (descending), then by vote_average (descending)
+        const sortedResults = moviesWithScores.sort((a, b) => {
+            if (b.relevanceScore !== a.relevanceScore) {
+                return b.relevanceScore - a.relevanceScore;
+            }
+            return (b.vote_average || 0) - (a.vote_average || 0);
+        });
+        
+        // Remove relevanceScore before returning and assign platforms
+        const normalizedResults: Movie[] = sortedResults.map(({ relevanceScore, ...item }) => 
+            assignPlatform(item)
+        );
 
         return normalizedResults;
 
