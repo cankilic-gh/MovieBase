@@ -104,6 +104,11 @@ const App: React.FC = () => {
     if(q) setActiveFilter('all');
   };
 
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setActiveFilter('all');
+  };
+
   return (
     <HashRouter>
       <div className="min-h-screen bg-cyber-black text-gray-100 font-sans selection:bg-cyber-cyan selection:text-black">
@@ -121,11 +126,16 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={
               <>
-                <HeroSection onSearch={handleSearch} />
+                <HeroSection 
+                    onSearch={handleSearch} 
+                    searchQuery={searchQuery}
+                    onClearSearch={handleClearSearch}
+                />
                 <InfiniteScrollGrid 
                     onMovieClick={setSelectedMovie} 
                     searchQuery={searchQuery}
                     filterType={activeFilter}
+                    onClearSearch={handleClearSearch}
                 />
               </>
             } />

@@ -2,15 +2,16 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Movie, MediaType } from '../types';
 import { fetchMovies, searchMovies } from '../services/tmdbService';
 import MovieCard from './MovieCard';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 
 interface InfiniteScrollGridProps {
   onMovieClick: (movie: Movie) => void;
   searchQuery?: string;
   filterType: MediaType;
+  onClearSearch?: () => void;
 }
 
-const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, searchQuery, filterType }) => {
+const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, searchQuery, filterType, onClearSearch }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -70,8 +71,19 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
                 <span className="w-2 h-8 bg-cyber-purple block shadow-[0_0_10px_#ff003c]"></span>
                 {searchQuery ? `Results for "${searchQuery}"` : 'Trending In Sector 01'}
             </h2>
-            <div className="text-xs font-mono text-cyber-cyan border border-cyber-cyan/30 px-2 py-1 rounded bg-cyber-cyan/5">
-                {movies.length} TITLES FOUND
+            <div className="flex items-center gap-3">
+                {searchQuery && onClearSearch && (
+                    <button
+                        onClick={onClearSearch}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono text-cyber-cyan border border-cyber-cyan/30 rounded bg-cyber-cyan/5 hover:bg-cyber-cyan/10 hover:border-cyber-cyan/50 transition-colors"
+                    >
+                        <X size={14} />
+                        CLEAR SEARCH
+                    </button>
+                )}
+                <div className="text-xs font-mono text-cyber-cyan border border-cyber-cyan/30 px-2 py-1 rounded bg-cyber-cyan/5">
+                    {movies.length} TITLES FOUND
+                </div>
             </div>
         </div>
 

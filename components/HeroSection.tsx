@@ -1,17 +1,33 @@
-import React, { useState } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface HeroSectionProps {
   onSearch: (query: string) => void;
+  searchQuery?: string;
+  onClearSearch?: () => void;
 }
 
-const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
+const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClearSearch }) => {
   const [query, setQuery] = useState('');
+
+  // Sync local query state with searchQuery prop
+  useEffect(() => {
+    if (searchQuery !== undefined) {
+      setQuery(searchQuery);
+    }
+  }, [searchQuery]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch(query);
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    if (onClearSearch) {
+      onClearSearch();
+    }
   };
 
   return (
@@ -84,7 +100,17 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
                     placeholder="Search the archive..."
                     className="bg-transparent border-none outline-none text-white w-full font-mono placeholder-gray-500"
                 />
-                <button type="button" className="ml-2 p-3 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
+                {(query || searchQuery) && (
+                    <button 
+                        type="button" 
+                        onClick={handleClear}
+                        className="mr-2 p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                        title="Clear search"
+                    >
+                        <X size={18} />
+                    </button>
+                )}
+                <button type="button" className="p-3 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
                     <SlidersHorizontal size={20} />
                 </button>
             </div>
@@ -97,7 +123,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
             transition={{ delay: 0.6 }}
             className="mt-8 flex flex-wrap justify-center gap-3"
         >
-            {['Sci-Fi', 'Cyberpunk', 'Dystopia', 'Noir', 'Action', 'Thriller'].map((tag) => (
+            {['Action', 'Comedy', 'Drama', 'Horror', 'Romance', 'Adventure', 'Kids'].map((tag) => (
                 <span key={tag} className="px-3 py-1 rounded-sm border border-cyber-cyan/30 text-cyber-cyan text-xs font-mono uppercase cursor-pointer hover:bg-cyber-cyan hover:text-black transition-colors hover:shadow-[0_0_10px_#ffaa00]">
                     {tag}
                 </span>
