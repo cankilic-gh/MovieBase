@@ -10,17 +10,6 @@ interface HeroSectionProps {
   activeCategory?: string | null;
 }
 
-// Genre mapping: Category name -> TMDB Genre ID
-const GENRE_MAP: Record<string, number> = {
-  'Action': 28,
-  'Comedy': 35,
-  'Drama': 18,
-  'Horror': 27,
-  'Romance': 10749,
-  'Adventure': 12,
-  'Kids': 10751, // Family genre
-};
-
 const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClearSearch, onCategoryFilter, activeCategory }) => {
   const [query, setQuery] = useState('');
 
