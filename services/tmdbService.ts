@@ -28,16 +28,57 @@ const headers = {
   'Content-Type': 'application/json'
 };
 
-export const fetchMovies = async (page: number, type: MediaType = 'all'): Promise<Movie[]> => {
+export const fetchMovies = async (page: number, type: MediaType = 'all', genreId?: number): Promise<Movie[]> => {
   try {
     let endpoint = '';
     
     if (type === 'all') {
-      endpoint = `/trending/all/week?language=en-US&page=${page}`;
+      if (genreId) {
+        // When genre filter is active, use discover endpoint for both movies and TV
+        const [movieRes, tvRes] = await Promise.all([
+          fetch(`${BASE_URL}/discover/movie?include_adult=false&include_video=false&language=en-US&page=${page}&sort_by=popularity.desc&with_genres=${genreId}`, { headers }),
+          fetch(`${BASE_URL}/discover/tv?include_adult=false&include_null_first_air_dates=false&language=en-US&page=${page}&sort_by=popularity.desc&with_genres=${genreId}`, { headers })
+        ]);
+        
+        if (!movieRes.ok || !tvRes.ok) {
+          throw new Error(`API Error: ${movieRes.status} or ${tvRes.status}`);
+        }
+        
+        const movieData: ApiResponse<any> = await movieRes.json();
+        const tvData: ApiResponse<any> = await tvRes.json();
+        
+        // Combine and normalize
+        const combinedResults = [
+          ...movieData.results.map((item: any) => ({ ...item, media_type: 'movie' })),
+          ...tvData.results.map((item: any) => ({ ...item, media_type: 'tv' }))
+        ];
+        
+        const normalizedResults: Movie[] = combinedResults.map((item: any) => ({
+          id: item.id,
+          title: item.title || item.name,
+          poster_path: item.poster_path,
+          backdrop_path: item.backdrop_path,
+          overview: item.overview,
+          vote_average: item.vote_average,
+          release_date: item.release_date || item.first_air_date || 'TBA',
+          genre_ids: item.genre_ids,
+          media_type: item.media_type,
+        })).map(assignPlatform);
+        
+        return normalizedResults;
+      } else {
+        endpoint = `/trending/all/week?language=en-US&page=${page}`;
+      }
     } else if (type === 'movie') {
       endpoint = `/discover/movie?include_adult=false&include_video=false&language=en-US&page=${page}&sort_by=popularity.desc`;
+      if (genreId) {
+        endpoint += `&with_genres=${genreId}`;
+      }
     } else if (type === 'tv') {
       endpoint = `/discover/tv?include_adult=false&include_null_first_air_dates=false&language=en-US&page=${page}&sort_by=popularity.desc`;
+      if (genreId) {
+        endpoint += `&with_genres=${genreId}`;
+      }
     }
 
     const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
@@ -188,5 +229,33 @@ export const searchMovies = async (query: string): Promise<Movie[]> => {
     } catch (error) {
         console.error("Search error", error);
         return [];
+    }
+};
+
+// Fetch trailer video key from TMDB
+export const fetchTrailer = async (movieId: number, mediaType: 'movie' | 'tv' = 'movie'): Promise<string | null> => {
+    try {
+        const endpoint = `/${mediaType}/${movieId}/videos?language=en-US`;
+        const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
+        
+        if (!res.ok) {
+            throw new Error(`Trailer API Error: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        
+        // Find the first trailer (prefer official trailers, then teasers, then any video)
+        const trailer = data.results?.find((video: any) => 
+            video.type === 'Trailer' && video.site === 'YouTube' && (video.official || true)
+        ) || data.results?.find((video: any) => 
+            video.type === 'Teaser' && video.site === 'YouTube'
+        ) || data.results?.find((video: any) => 
+            video.site === 'YouTube'
+        );
+        
+        return trailer?.key || null;
+    } catch (error) {
+        console.error("Failed to fetch trailer", error);
+        return null;
     }
 };

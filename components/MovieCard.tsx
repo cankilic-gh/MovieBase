@@ -58,28 +58,42 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
       {/* Holographic Overlay */}
       <div className={`absolute inset-0 bg-gradient-to-t ${isFeatured ? 'from-cyber-black via-cyber-black/50 to-transparent' : 'from-cyber-black via-transparent to-transparent'} opacity-90 transition-opacity`} />
 
-      {/* Top Right: Circular Score */}
-      <div className="absolute top-3 right-3 flex items-center justify-center w-10 h-10 rounded-full bg-black/80 backdrop-blur-md border border-white/10 shadow-lg z-20">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-          <path
-            className="text-gray-800"
-            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-          />
-          <path
-            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-            fill="none"
-            stroke={scoreColor}
-            strokeWidth="3"
-            strokeDasharray={`${movie.vote_average * 10}, 100`}
-            strokeLinecap="round"
-          />
-        </svg>
-        <span className="absolute text-[10px] font-bold text-white font-mono">
-          {movie.vote_average.toFixed(1)}
-        </span>
+      {/* Top Right: Circular Score and Add Button */}
+      <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
+        {/* Add to Favorites Button */}
+        <button 
+          className="w-10 h-10 flex items-center justify-center rounded border border-white/20 hover:border-cyber-purple hover:text-cyber-purple transition-colors bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            // TODO: Add to favorites functionality
+          }}
+          title="Add to favorites"
+        >
+          <Plus size={18} />
+        </button>
+        {/* Circular Score */}
+        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-black/80 backdrop-blur-md border border-white/10 shadow-lg">
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+            <path
+              className="text-gray-800"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+            />
+            <path
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke={scoreColor}
+              strokeWidth="3"
+              strokeDasharray={`${movie.vote_average * 10}, 100`}
+              strokeLinecap="round"
+            />
+          </svg>
+          <span className="absolute text-[10px] font-bold text-white font-mono">
+            {movie.vote_average.toFixed(1)}
+          </span>
+        </div>
       </div>
 
       {/* Featured Specific: Big Play Button Center */}

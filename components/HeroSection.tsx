@@ -6,9 +6,22 @@ interface HeroSectionProps {
   onSearch: (query: string) => void;
   searchQuery?: string;
   onClearSearch?: () => void;
+  onCategoryFilter?: (category: string | null) => void;
+  activeCategory?: string | null;
 }
 
-const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClearSearch }) => {
+// Genre mapping: Category name -> TMDB Genre ID
+const GENRE_MAP: Record<string, number> = {
+  'Action': 28,
+  'Comedy': 35,
+  'Drama': 18,
+  'Horror': 27,
+  'Romance': 10749,
+  'Adventure': 12,
+  'Kids': 10751, // Family genre
+};
+
+const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClearSearch, onCategoryFilter, activeCategory }) => {
   const [query, setQuery] = useState('');
 
   // Sync local query state with searchQuery prop
@@ -27,6 +40,17 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClea
     setQuery('');
     if (onClearSearch) {
       onClearSearch();
+    }
+  };
+
+  const handleCategoryClick = (category: string) => {
+    if (onCategoryFilter) {
+      // Toggle: if same category clicked, reset to null (All)
+      if (activeCategory === category) {
+        onCategoryFilter(null);
+      } else {
+        onCategoryFilter(category);
+      }
     }
   };
 
@@ -123,11 +147,22 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClea
             transition={{ delay: 0.6 }}
             className="mt-8 flex flex-wrap justify-center gap-3"
         >
-            {['Action', 'Comedy', 'Drama', 'Horror', 'Romance', 'Adventure', 'Kids'].map((tag) => (
-                <span key={tag} className="px-3 py-1 rounded-sm border border-cyber-cyan/30 text-cyber-cyan text-xs font-mono uppercase cursor-pointer hover:bg-cyber-cyan hover:text-black transition-colors hover:shadow-[0_0_10px_#ffaa00]">
-                    {tag}
-                </span>
-            ))}
+            {['All', 'Action', 'Comedy', 'Drama', 'Horror', 'Romance', 'Adventure', 'Kids'].map((tag) => {
+                const isActive = tag === 'All' ? !activeCategory : activeCategory === tag;
+                return (
+                    <span 
+                        key={tag} 
+                        onClick={() => tag === 'All' ? onCategoryFilter?.(null) : handleCategoryClick(tag)}
+                        className={`px-3 py-1 rounded-sm border text-xs font-mono uppercase cursor-pointer transition-all ${
+                            isActive 
+                                ? 'border-cyber-cyan bg-cyber-cyan text-black shadow-[0_0_10px_#ffaa00]' 
+                                : 'border-cyber-cyan/30 text-cyber-cyan hover:bg-cyber-cyan hover:text-black hover:shadow-[0_0_10px_#ffaa00]'
+                        }`}
+                    >
+                        {tag}
+                    </span>
+                );
+            })}
         </motion.div>
       </div>
     </div>

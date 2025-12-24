@@ -1,27 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import InfiniteScrollGrid from './components/InfiniteScrollGrid';
 import LoginModal from './components/LoginModal';
 import { Movie, MediaType } from './types';
-import { getBackdropUrl } from './services/tmdbService';
-import { X, Play, Info } from 'lucide-react';
+import { getBackdropUrl, fetchTrailer } from './services/tmdbService';
+import { supabase } from './services/supabaseClient';
+import { X, Play, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Genre mapping: Category name -> TMDB Genre ID
+const GENRE_MAP: Record<string, number> = {
+  'Action': 28,
+  'Comedy': 35,
+  'Drama': 18,
+  'Horror': 27,
+  'Romance': 10749,
+  'Adventure': 12,
+  'Kids': 10751,
+};
 
 // Detail Modal (In-file for simplicity of the prompt architecture, though ideally separate)
 const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void }> = ({ movie, onClose }) => {
+  const [trailerKey, setTrailerKey] = useState<string | null>(null);
+  const [isLoadingTrailer, setIsLoadingTrailer] = useState(false);
+  const [showTrailer, setShowTrailer] = useState(false);
+
+  useEffect(() => {
+    const loadTrailer = async () => {
+      setIsLoadingTrailer(true);
+      const key = await fetchTrailer(movie.id, movie.media_type || 'movie');
+      setTrailerKey(key);
+      setIsLoadingTrailer(false);
+    };
+    loadTrailer();
+  }, [movie.id, movie.media_type]);
+
+  const handlePlayClick = () => {
+    if (trailerKey) {
+      setShowTrailer(true);
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }} 
       animate={{ opacity: 1 }} 
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+      onClick={onClose}
     >
       <motion.div 
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="relative w-full max-w-5xl bg-cyber-dark rounded-xl overflow-hidden border border-white/10 shadow-2xl flex flex-col md:flex-row max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
       >
         <button 
             onClick={onClose} 
@@ -32,18 +66,43 @@ const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void }> = ({ mov
 
         {/* Backdrop / Video Area */}
         <div className="relative w-full md:w-2/3 h-64 md:h-auto bg-black">
-            <img 
-                src={getBackdropUrl(movie.backdrop_path)} 
-                alt={movie.title}
-                className="w-full h-full object-cover opacity-60"
-            />
-            {/* Play Button Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center group cursor-pointer">
-                <div className="w-16 h-16 rounded-full bg-cyber-cyan/20 backdrop-blur border border-cyber-cyan/50 flex items-center justify-center group-hover:scale-110 transition-transform shadow-neon-cyan">
-                    <Play className="text-white ml-1 fill-white" size={32} />
-                </div>
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-cyber-dark to-transparent" />
+            {showTrailer && trailerKey ? (
+                <iframe
+                    src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&rel=0`}
+                    title={`${movie.title} Trailer`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                />
+            ) : (
+                <>
+                    <img 
+                        src={getBackdropUrl(movie.backdrop_path)} 
+                        alt={movie.title}
+                        className="w-full h-full object-cover opacity-60"
+                    />
+                    {/* Play Button Overlay */}
+                    <div 
+                        className="absolute inset-0 flex items-center justify-center group cursor-pointer"
+                        onClick={handlePlayClick}
+                    >
+                        {isLoadingTrailer ? (
+                            <div className="w-16 h-16 rounded-full bg-cyber-cyan/20 backdrop-blur border border-cyber-cyan/50 flex items-center justify-center">
+                                <div className="w-8 h-8 border-2 border-cyber-cyan border-t-transparent rounded-full animate-spin" />
+                            </div>
+                        ) : trailerKey ? (
+                            <div className="w-16 h-16 rounded-full bg-cyber-cyan/20 backdrop-blur border border-cyber-cyan/50 flex items-center justify-center group-hover:scale-110 transition-transform shadow-neon-cyan">
+                                <Play className="text-white ml-1 fill-white" size={32} />
+                            </div>
+                        ) : (
+                            <div className="text-center p-4 bg-black/50 rounded backdrop-blur">
+                                <p className="text-gray-400 text-sm font-mono">No trailer available</p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-cyber-dark to-transparent" />
+                </>
+            )}
         </div>
 
         {/* Info Area */}
@@ -55,7 +114,15 @@ const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void }> = ({ mov
                 <span className="text-gray-400 text-xs font-mono">{movie.release_date}</span>
             </div>
 
-            <h2 className="text-3xl font-mono font-bold text-white mb-4 leading-none">{movie.title}</h2>
+            <div className="flex items-start justify-between mb-4">
+                <h2 className="text-3xl font-mono font-bold text-white leading-none flex-1 pr-4">{movie.title}</h2>
+                <button 
+                    className="w-10 h-10 flex items-center justify-center rounded border border-white/20 hover:border-cyber-purple hover:text-cyber-purple transition-colors bg-white/5 flex-shrink-0"
+                    title="Add to favorites"
+                >
+                    <Plus size={20} />
+                </button>
+            </div>
             
             <div className="flex items-center gap-4 mb-6">
                 <div className="flex items-center gap-1 text-cyber-cyan font-mono font-bold">
@@ -68,18 +135,9 @@ const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void }> = ({ mov
                 </div>
             </div>
 
-            <p className="text-gray-300 text-sm leading-relaxed mb-8 font-light">
+            <p className="text-gray-300 text-sm leading-relaxed font-light">
                 {movie.overview}
             </p>
-
-            <div className="space-y-3">
-                <button className="w-full py-3 bg-white text-black font-bold rounded hover:bg-cyber-cyan transition-colors flex items-center justify-center gap-2">
-                    <Play size={18} className="fill-black" /> RESUME PLAYING
-                </button>
-                <button className="w-full py-3 bg-white/5 border border-white/10 text-white hover:border-white/30 rounded transition-colors flex items-center justify-center gap-2">
-                    <Info size={18} /> MORE INFO
-                </button>
-            </div>
         </div>
       </motion.div>
     </motion.div>
@@ -92,6 +150,37 @@ const App: React.FC = () => {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  // Check Supabase session on mount and when auth state changes
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.warn('Supabase session check failed:', error.message);
+          return;
+        }
+        setIsLoggedIn(!!session);
+      } catch (error) {
+        console.warn('Failed to check Supabase session:', error);
+      }
+    };
+    
+    // Only check session if Supabase is properly configured
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    if (supabaseUrl && supabaseKey) {
+      checkSession();
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setIsLoggedIn(!!session);
+      });
+
+      return () => subscription.unsubscribe();
+    }
+  }, []);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
@@ -107,7 +196,15 @@ const App: React.FC = () => {
   const handleClearSearch = () => {
     setSearchQuery('');
     setActiveFilter('all');
+    setActiveCategory(null);
   };
+
+  const handleCategoryFilter = (category: string | null) => {
+    setActiveCategory(category);
+    setSearchQuery(''); // Clear search when filtering by category
+  };
+
+  const genreId = activeCategory ? GENRE_MAP[activeCategory] : undefined;
 
   return (
     <HashRouter>
@@ -130,12 +227,15 @@ const App: React.FC = () => {
                     onSearch={handleSearch} 
                     searchQuery={searchQuery}
                     onClearSearch={handleClearSearch}
+                    onCategoryFilter={handleCategoryFilter}
+                    activeCategory={activeCategory}
                 />
                 <InfiniteScrollGrid 
                     onMovieClick={setSelectedMovie} 
                     searchQuery={searchQuery}
                     filterType={activeFilter}
                     onClearSearch={handleClearSearch}
+                    genreId={genreId}
                 />
               </>
             } />

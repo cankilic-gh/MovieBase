@@ -9,9 +9,10 @@ interface InfiniteScrollGridProps {
   searchQuery?: string;
   filterType: MediaType;
   onClearSearch?: () => void;
+  genreId?: number;
 }
 
-const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, searchQuery, filterType, onClearSearch }) => {
+const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, searchQuery, filterType, onClearSearch, genreId }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -33,12 +34,12 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
     if (node) observer.current.observe(node);
   }, [loading, hasMore]);
 
-  // Reset when search or filter changes
+  // Reset when search, filter, or genre changes
   useEffect(() => {
     setMovies([]);
     setPage(1);
     setHasMore(true);
-  }, [searchQuery, filterType]);
+  }, [searchQuery, filterType, genreId]);
 
   // Data Fetching Logic
   useEffect(() => {
@@ -50,10 +51,14 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
       if (searchQuery) {
         if (page === 1) {
             newMovies = await searchMovies(searchQuery);
+            // Filter by genre if active
+            if (genreId) {
+              newMovies = newMovies.filter(movie => movie.genre_ids.includes(genreId));
+            }
             setHasMore(false);
         }
       } else {
-        newMovies = await fetchMovies(page, filterType);
+        newMovies = await fetchMovies(page, filterType, genreId);
         if (newMovies.length === 0) setHasMore(false);
       }
 
@@ -62,7 +67,7 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
     };
 
     loadMovies();
-  }, [page, searchQuery, filterType]);
+  }, [page, searchQuery, filterType, genreId]);
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-8">
