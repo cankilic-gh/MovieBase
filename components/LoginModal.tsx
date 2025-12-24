@@ -45,8 +45,13 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
 
         // Handle email confirmation errors more gracefully
         if (signUpError) {
-          // If it's an email sending error but user was created, show success
-          if (signUpError.message?.includes('confirmation email') && data?.user) {
+          // If it's an email sending error but user was created, treat as success
+          const isEmailError = signUpError.message?.toLowerCase().includes('confirmation email') || 
+                              signUpError.message?.toLowerCase().includes('email') ||
+                              signUpError.message?.toLowerCase().includes('smtp');
+          
+          if (isEmailError && data?.user) {
+            // User was created but email couldn't be sent - still show success
             setSuccess('Account created successfully! You can sign in now.');
             setTimeout(() => {
               setIsSignUp(false);
@@ -60,17 +65,15 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
         }
 
         if (data.user) {
-          // Check if email confirmation is required
-          if (data.user.email_confirmed_at) {
-            setSuccess('Account created! You can sign in now.');
-          } else {
-            setSuccess('Account created! Please check your email to verify your account (if email confirmation is enabled).');
-          }
+          // Always show success if user was created, regardless of email confirmation
+          setSuccess('Account created successfully! You can sign in now.');
           setTimeout(() => {
             setIsSignUp(false);
             setEmail('');
             setPassword('');
           }, 3000);
+        } else {
+          throw new Error('Failed to create account. Please try again.');
         }
       } else {
         const { data, error: signInError } = await supabase.auth.signInWithPassword({
