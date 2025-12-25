@@ -229,33 +229,6 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
           )}
         </div>
         
-        {/* Action Buttons (Standard & Large Only - Featured has center play) */}
-        {!isFeatured && (
-            <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
-            <button className="flex-1 flex items-center justify-center gap-2 bg-cyber-cyan/10 hover:bg-cyber-cyan text-cyber-cyan hover:text-black py-2 rounded text-xs font-bold border border-cyber-cyan/50 transition-colors">
-                <Play size={14} /> PLAY
-            </button>
-            <button 
-              onClick={handleAddToFavorites}
-              disabled={isAddingFavorite || !isLoggedIn}
-              className={`w-8 h-8 flex items-center justify-center rounded transition-colors bg-white/5 ${
-                isFavorite 
-                  ? 'text-cyber-cyan bg-cyber-cyan/20' 
-                  : 'hover:text-cyber-cyan'
-              } ${isAddingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
-              title={isLoggedIn ? (isFavorite ? 'Remove from favorites' : 'Add to favorites') : 'Login to add favorites'}
-            >
-              {isAddingFavorite ? (
-                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Heart 
-                  size={16} 
-                  className={isFavorite ? "fill-cyber-cyan text-cyber-cyan" : ""}
-                />
-              )}
-            </button>
-            </div>
-        )}
       </div>
       
       {/* Glitch Effect Overlay */}

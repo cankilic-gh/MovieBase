@@ -129,6 +129,35 @@ const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose, onMovi
                           variant="standard"
                           isLoggedIn={true}
                         />
+                        {/* Always visible heart button for favorites list */}
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const { data: { user } } = await supabase.auth.getUser();
+                              if (!user) return;
+
+                              const { error } = await supabase
+                                .from('favorites')
+                                .delete()
+                                .eq('user_id', user.id)
+                                .eq('movie_id', movie.id);
+
+                              if (error) throw error;
+
+                              // Remove from list immediately
+                              setFavorites(prev => prev.filter(m => m.id !== movie.id));
+                            } catch (err: any) {
+                              console.error('Failed to remove favorite:', err);
+                              // Reload on error
+                              loadFavorites();
+                            }
+                          }}
+                          className="absolute top-3 right-3 z-30 w-10 h-10 flex items-center justify-center rounded transition-colors bg-black/80 backdrop-blur-md text-cyber-cyan hover:bg-cyber-cyan/20"
+                          title="Remove from favorites"
+                        >
+                          <Heart size={18} className="fill-cyber-cyan text-cyber-cyan" />
+                        </button>
                       </div>
                     ))}
                   </div>
