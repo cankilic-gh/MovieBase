@@ -8,7 +8,7 @@ export interface Movie {
   release_date: string;
   genre_ids: number[];
   media_type?: 'movie' | 'tv';
-  platform?: 'Netflix' | 'Prime' | 'Disney+' | 'Hulu' | 'HBO'; // Mocked for UI demo
+  platform?: string; // Real platform name from TMDB watch providers API
 }
 
 export interface Genre {

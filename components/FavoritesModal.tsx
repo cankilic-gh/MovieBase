@@ -36,14 +36,24 @@ const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose, onMovi
 
       const { data, error: fetchError } = await supabase
         .from('favorites')
-        .select('movie_data')
+        .select('movie_id, movie_data')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
 
-      const movies = data?.map((item: any) => item.movie_data).filter(Boolean) || [];
-      setFavorites(movies);
+      // Remove duplicates by movie_id (keep first occurrence)
+      const seenIds = new Set<number>();
+      const uniqueMovies = data?.filter((item: any) => {
+        const movieId = item.movie_id;
+        if (seenIds.has(movieId)) {
+          return false; // Duplicate, skip
+        }
+        seenIds.add(movieId);
+        return true;
+      }).map((item: any) => item.movie_data).filter(Boolean) || [];
+      
+      setFavorites(uniqueMovies);
     } catch (err: any) {
       console.error('Failed to load favorites:', err);
       setError(err.message || 'Failed to load favorites');
@@ -128,6 +138,7 @@ const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose, onMovi
                           onClick={onMovieClick}
                           variant="standard"
                           isLoggedIn={true}
+                          hideHeartButton={true}
                         />
                         {/* Always visible heart button for favorites list */}
                         <button

@@ -22,6 +22,25 @@ const GENRE_MAP: Record<string, number> = {
   'Kids': 10751,
 };
 
+// Helper function to get platform color
+const getPlatformColor = (platform?: string): string => {
+  if (!platform) return 'text-blue-400 border-blue-400/50';
+  
+  const platformLower = platform.toLowerCase();
+  
+  if (platformLower.includes('netflix')) return 'text-red-500 border-red-500/50';
+  if (platformLower.includes('prime')) return 'text-blue-400 border-blue-400/50';
+  if (platformLower.includes('disney')) return 'text-blue-500 border-blue-500/50';
+  if (platformLower.includes('hbo')) return 'text-purple-500 border-purple-500/50';
+  if (platformLower.includes('hulu')) return 'text-green-500 border-green-500/50';
+  if (platformLower.includes('apple')) return 'text-gray-300 border-gray-300/50';
+  if (platformLower.includes('paramount')) return 'text-blue-600 border-blue-600/50';
+  if (platformLower.includes('showtime')) return 'text-red-500 border-red-500/50';
+  if (platformLower.includes('starz')) return 'text-purple-400 border-purple-400/50';
+  
+  return 'text-cyber-cyan border-cyber-cyan/50';
+};
+
 // Detail Modal (In-file for simplicity of the prompt architecture, though ideally separate)
 const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void; isLoggedIn: boolean }> = ({ movie, onClose, isLoggedIn }) => {
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
@@ -42,42 +61,107 @@ const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void; isLoggedIn
 
   // Check if movie is in favorites
   useEffect(() => {
+    let isMounted = true;
+    let channel: any = null;
+    let authSubscription: any = null;
+
     const checkFavorite = async () => {
-      if (!isLoggedIn) {
-        setIsFavorite(false);
-        return;
-      }
-      
+      // Always check session directly, don't rely only on isLoggedIn prop
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
+        
+        if (!user) {
+          if (isMounted) setIsFavorite(false);
+          return;
+        }
 
         const { data, error } = await supabase
           .from('favorites')
           .select('id')
           .eq('user_id', user.id)
           .eq('movie_id', movie.id)
-          .single();
+          .maybeSingle(); // Use maybeSingle instead of single to avoid errors
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        if (error && error.code !== 'PGRST116') {
           console.error('Error checking favorite:', error);
           return;
         }
 
-        setIsFavorite(!!data);
+        if (isMounted) {
+          setIsFavorite(!!data);
+        }
       } catch (error) {
         console.error('Failed to check favorite:', error);
+        if (isMounted) setIsFavorite(false);
       }
     };
 
+    // Initial check
     checkFavorite();
-  }, [movie.id, isLoggedIn]);
+
+    // Subscribe to auth state changes (for refresh scenarios)
+    authSubscription = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) {
+        if (session?.user) {
+          checkFavorite();
+        } else {
+          setIsFavorite(false);
+        }
+      }
+    });
+
+    // Subscribe to favorites changes for this movie and user
+    const setupSubscription = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      
+      if (!user) return;
+
+      channel = supabase
+        .channel(`favorites-modal-${movie.id}-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'favorites',
+            filter: `movie_id=eq.${movie.id}`,
+          },
+          () => {
+            // Re-check favorite status when changes occur
+            if (isMounted) {
+              checkFavorite();
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    // Setup subscription after a short delay to ensure session is loaded
+    const timeoutId = setTimeout(() => {
+      setupSubscription();
+    }, 100);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+      if (authSubscription?.data?.subscription) {
+        authSubscription.data.subscription.unsubscribe();
+      }
+    };
+  }, [movie.id]); // Remove isLoggedIn dependency, check session directly
 
   const handleAddToFavorites = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!isLoggedIn) {
-      alert('Please login to add favorites');
+    if (!isLoggedIn || isAddingFavorite) {
+      if (!isLoggedIn) {
+        alert('Please login to add favorites');
+      }
       return;
     }
 
@@ -86,6 +170,7 @@ const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void; isLoggedIn
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         alert('Please login to add favorites');
+        setIsAddingFavorite(false);
         return;
       }
 
@@ -100,18 +185,60 @@ const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void; isLoggedIn
         if (error) throw error;
         setIsFavorite(false);
       } else {
-        // Add to favorites
-        const { error } = await supabase
+        // First check if it already exists
+        const { data: existing } = await supabase
           .from('favorites')
-          .insert({
-            user_id: user.id,
-            movie_id: movie.id,
-            movie_title: movie.title,
-            movie_data: movie
-          });
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('movie_id', movie.id)
+          .maybeSingle();
 
-        if (error) throw error;
-        setIsFavorite(true);
+        if (existing) {
+          // Already exists, just update state
+          setIsFavorite(true);
+        } else {
+          // Insert new favorite
+          const { data, error } = await supabase
+            .from('favorites')
+            .insert({
+              user_id: user.id,
+              movie_id: movie.id,
+              movie_title: movie.title,
+              movie_data: movie
+            })
+            .select(); // Return inserted data to verify
+
+          if (error) {
+            // If it's a unique constraint violation, check again
+            if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
+              // Race condition: another request inserted it, just update state
+              setIsFavorite(true);
+            } else {
+              console.error('Failed to insert favorite:', error);
+              throw error;
+            }
+          } else {
+            // Successfully inserted
+            if (data && data.length > 0) {
+              setIsFavorite(true);
+            } else {
+              console.warn('Insert returned no data');
+              // Verify it was actually inserted
+              const { data: verify } = await supabase
+                .from('favorites')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('movie_id', movie.id)
+                .maybeSingle();
+              
+              if (verify) {
+                setIsFavorite(true);
+              } else {
+                throw new Error('Failed to insert favorite - no data returned');
+              }
+            }
+          }
+        }
       }
     } catch (error: any) {
       console.error('Failed to update favorite:', error);
@@ -192,7 +319,7 @@ const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void; isLoggedIn
         {/* Info Area */}
         <div className="w-full md:w-1/3 p-8 overflow-y-auto">
             <div className="flex items-center gap-2 mb-4">
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${movie.platform === 'Netflix' ? 'text-red-500 border-red-500/50' : 'text-blue-400 border-blue-400/50'}`}>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${getPlatformColor(movie.platform)}`}>
                     {movie.platform || 'STREAMING'}
                 </span>
                 <span className="text-gray-400 text-xs font-mono">{movie.release_date}</span>

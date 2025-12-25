@@ -31,6 +31,13 @@ CREATE POLICY "Users can insert own favorites"
     FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+-- Policy: Users can only update their own favorites
+CREATE POLICY "Users can update own favorites"
+    ON public.favorites
+    FOR UPDATE
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
 -- Policy: Users can only delete their own favorites
 CREATE POLICY "Users can delete own favorites"
     ON public.favorites

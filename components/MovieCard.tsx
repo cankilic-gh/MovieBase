@@ -10,55 +10,126 @@ interface MovieCardProps {
   onClick: (movie: Movie) => void;
   variant?: 'standard' | 'featured' | 'large';
   isLoggedIn?: boolean;
+  hideHeartButton?: boolean; // Hide the built-in heart button (useful for FavoritesModal)
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standard', isLoggedIn = false }) => {
+const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standard', isLoggedIn = false, hideHeartButton = false }) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isAddingFavorite, setIsAddingFavorite] = useState(false);
 
   // Check if movie is in favorites
   useEffect(() => {
+    let isMounted = true;
+    let channel: any = null;
+    let authSubscription: any = null;
+
     const checkFavorite = async () => {
-      if (!isLoggedIn) {
-        setIsFavorite(false);
-        return;
-      }
-      
+      // Always check session directly, don't rely only on isLoggedIn prop
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
+        
+        if (!user) {
+          if (isMounted) setIsFavorite(false);
+          return;
+        }
 
         const { data, error } = await supabase
           .from('favorites')
           .select('id')
           .eq('user_id', user.id)
           .eq('movie_id', movie.id)
-          .single();
+          .maybeSingle(); // Use maybeSingle instead of single to avoid errors
 
         if (error && error.code !== 'PGRST116') {
+          console.error('Error checking favorite:', error);
           return;
         }
 
-        setIsFavorite(!!data);
+        if (isMounted) {
+          setIsFavorite(!!data);
+        }
       } catch (error) {
-        // Silent fail
+        console.error('Failed to check favorite:', error);
+        if (isMounted) setIsFavorite(false);
       }
     };
 
+    // Initial check
     checkFavorite();
-  }, [movie.id, isLoggedIn]);
+
+    // Subscribe to auth state changes (for refresh scenarios)
+    authSubscription = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) {
+        if (session?.user) {
+          checkFavorite();
+        } else {
+          setIsFavorite(false);
+        }
+      }
+    });
+
+    // Subscribe to favorites changes for this movie and user
+    const setupSubscription = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      
+      if (!user) return;
+
+      channel = supabase
+        .channel(`favorites-${movie.id}-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'favorites',
+            filter: `movie_id=eq.${movie.id}`,
+          },
+          () => {
+            // Re-check favorite status when changes occur
+            if (isMounted) {
+              checkFavorite();
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    // Setup subscription after a short delay to ensure session is loaded
+    const timeoutId = setTimeout(() => {
+      setupSubscription();
+    }, 100);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+      if (authSubscription?.data?.subscription) {
+        authSubscription.data.subscription.unsubscribe();
+      }
+    };
+  }, [movie.id]); // Remove isLoggedIn dependency, check session directly
 
   const handleAddToFavorites = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!isLoggedIn) {
+    if (!isLoggedIn || isAddingFavorite) {
       return;
     }
+
+    // Prevent double-click
+    if (isAddingFavorite) return;
 
     setIsAddingFavorite(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setIsAddingFavorite(false);
+        return;
+      }
 
       if (isFavorite) {
         const { error } = await supabase
@@ -70,20 +141,64 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
         if (error) throw error;
         setIsFavorite(false);
       } else {
-        const { error } = await supabase
+        // First check if it already exists
+        const { data: existing } = await supabase
           .from('favorites')
-          .insert({
-            user_id: user.id,
-            movie_id: movie.id,
-            movie_title: movie.title,
-            movie_data: movie
-          });
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('movie_id', movie.id)
+          .maybeSingle();
 
-        if (error) throw error;
-        setIsFavorite(true);
+        if (existing) {
+          // Already exists, just update state
+          setIsFavorite(true);
+        } else {
+          // Insert new favorite
+          const { data, error } = await supabase
+            .from('favorites')
+            .insert({
+              user_id: user.id,
+              movie_id: movie.id,
+              movie_title: movie.title,
+              movie_data: movie
+            })
+            .select(); // Return inserted data to verify
+
+          if (error) {
+            // If it's a unique constraint violation, check again
+            if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
+              // Race condition: another request inserted it, just update state
+              setIsFavorite(true);
+            } else {
+              console.error('Failed to insert favorite:', error);
+              throw error;
+            }
+          } else {
+            // Successfully inserted
+            if (data && data.length > 0) {
+              setIsFavorite(true);
+            } else {
+              console.warn('Insert returned no data');
+              // Verify it was actually inserted
+              const { data: verify } = await supabase
+                .from('favorites')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('movie_id', movie.id)
+                .maybeSingle();
+              
+              if (verify) {
+                setIsFavorite(true);
+              } else {
+                throw new Error('Failed to insert favorite - no data returned');
+              }
+            }
+          }
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update favorite:', error);
+      // Don't show alert, just log the error
     } finally {
       setIsAddingFavorite(false);
     }
@@ -93,13 +208,23 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
   const scoreColor = movie.vote_average >= 7.5 ? '#ffaa00' : movie.vote_average >= 5 ? '#ff003c' : '#555';
   
   const getPlatformColor = (p?: string) => {
-    switch(p) {
-      case 'Netflix': return 'text-red-600';
-      case 'Prime': return 'text-blue-400';
-      case 'Disney+': return 'text-blue-500';
-      case 'HBO': return 'text-purple-500';
-      default: return 'text-white';
-    }
+    if (!p) return 'text-white';
+    
+    // Normalize platform name for comparison
+    const platformLower = p.toLowerCase();
+    
+    if (platformLower.includes('netflix')) return 'text-red-600';
+    if (platformLower.includes('prime')) return 'text-blue-400';
+    if (platformLower.includes('disney')) return 'text-blue-500';
+    if (platformLower.includes('hbo')) return 'text-purple-500';
+    if (platformLower.includes('hulu')) return 'text-green-500';
+    if (platformLower.includes('apple')) return 'text-gray-300';
+    if (platformLower.includes('paramount')) return 'text-blue-600';
+    if (platformLower.includes('showtime')) return 'text-red-500';
+    if (platformLower.includes('starz')) return 'text-purple-400';
+    if (platformLower.includes('crunchyroll')) return 'text-orange-500';
+    
+    return 'text-cyber-cyan';
   };
 
   // Determine Image Source and Style based on Variant
@@ -138,26 +263,28 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
 
       {/* Top Right: Circular Score and Add Button */}
       <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
-        {/* Add to Favorites Button */}
-        <button 
-          className={`w-10 h-10 flex items-center justify-center rounded transition-colors bg-black/80 backdrop-blur-md ${
-            isFavorite 
-              ? 'opacity-100 text-cyber-cyan bg-cyber-cyan/20' 
-              : 'opacity-0 group-hover:opacity-100 hover:text-cyber-cyan'
-          } ${isAddingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
-          onClick={handleAddToFavorites}
-          disabled={isAddingFavorite || !isLoggedIn}
-          title={isLoggedIn ? (isFavorite ? 'Remove from favorites' : 'Add to favorites') : 'Login to add favorites'}
-        >
-          {isAddingFavorite ? (
-            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Heart 
-              size={18} 
-              className={isFavorite ? "fill-cyber-cyan text-cyber-cyan" : ""}
-            />
-          )}
-        </button>
+        {/* Add to Favorites Button - Hidden if hideHeartButton is true */}
+        {!hideHeartButton && (
+          <button 
+            className={`w-10 h-10 flex items-center justify-center rounded transition-colors bg-black/80 backdrop-blur-md ${
+              isFavorite 
+                ? 'opacity-100 text-cyber-cyan bg-cyber-cyan/20' 
+                : 'opacity-0 group-hover:opacity-100 hover:text-cyber-cyan'
+            } ${isAddingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
+            onClick={handleAddToFavorites}
+            disabled={isAddingFavorite || !isLoggedIn}
+            title={isLoggedIn ? (isFavorite ? 'Remove from favorites' : 'Add to favorites') : 'Login to add favorites'}
+          >
+            {isAddingFavorite ? (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Heart 
+                size={18} 
+                className={isFavorite ? "fill-cyber-cyan text-cyber-cyan" : ""}
+              />
+            )}
+          </button>
+        )}
         {/* Circular Score */}
         <div className="flex items-center justify-center w-10 h-10 rounded-full bg-black/80 backdrop-blur-md border border-white/10 shadow-lg">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">

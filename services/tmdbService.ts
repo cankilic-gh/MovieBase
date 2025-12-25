@@ -6,21 +6,138 @@ const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
 
+// Default watch region (can be changed to 'TR' for Turkey, 'US' for United States, etc.)
+const DEFAULT_WATCH_REGION = 'US';
+
+// TMDB Provider ID to Platform Name Mapping
+// Based on TMDB's watch provider IDs (https://www.themoviedb.org/talk/5e6c3cd6000e4d3ab53797ed)
+const PROVIDER_MAP: Record<number, string> = {
+  8: 'Netflix',
+  9: 'Prime Video',
+  337: 'Disney+',
+  15: 'Hulu',
+  31: 'HBO Max',
+  350: 'Apple TV+',
+  2: 'Apple TV',
+  3: 'Google Play Movies',
+  68: 'Microsoft Store',
+  192: 'YouTube',
+  283: 'Crunchyroll',
+  384: 'HBO Go',
+  531: 'Paramount+',
+  619: 'Starz',
+  626: 'Showtime',
+};
+
 export const getImageUrl = (path: string | null) => 
   path ? `${IMAGE_BASE_URL}${path}` : 'https://placehold.co/500x750/1a0b0b/ffaa00?text=NO+IMAGE';
 
 export const getBackdropUrl = (path: string | null) =>
   path ? `${BACKDROP_BASE_URL}${path}` : 'https://placehold.co/1920x1080/1a0b0b/ffaa00?text=NO+SIGNAL';
 
-// Helper to assign random platform (since API doesn't provide this easily in list view)
-const assignPlatform = (movie: Movie): Movie => {
-  const platforms: Array<'Netflix' | 'Prime' | 'Disney+' | 'Hulu' | 'HBO'> = ['Netflix', 'Prime', 'Disney+', 'Hulu', 'HBO'];
-  // Deterministic assignment based on ID so it doesn't change on re-render
-  const index = movie.id % platforms.length;
-  return {
-    ...movie,
-    platform: platforms[index]
-  };
+// Cache for watch providers to avoid excessive API calls
+const providerCache = new Map<string, string | null>();
+
+// Fetch watch provider for a single movie/TV show
+const fetchWatchProvider = async (
+  movieId: number, 
+  mediaType: 'movie' | 'tv' = 'movie',
+  region: string = DEFAULT_WATCH_REGION
+): Promise<string | null> => {
+  const cacheKey = `${mediaType}-${movieId}-${region}`;
+  
+  // Check cache first
+  if (providerCache.has(cacheKey)) {
+    return providerCache.get(cacheKey) || null;
+  }
+
+  try {
+    const endpoint = `/${mediaType}/${movieId}/watch/providers`;
+    const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
+    
+    if (!res.ok) {
+      // Cache null result to avoid retrying failed requests
+      providerCache.set(cacheKey, null);
+      return null;
+    }
+    
+    const data = await res.json();
+    
+    // Get providers for the specified region
+    const regionData = data.results?.[region];
+    if (!regionData) {
+      providerCache.set(cacheKey, null);
+      return null;
+    }
+    
+    // Prefer flatrate (subscription) providers, then rent, then buy
+    const providers = regionData.flatrate || regionData.rent || regionData.buy || [];
+    
+    if (providers.length === 0) {
+      providerCache.set(cacheKey, null);
+      return null;
+    }
+    
+    // Get the first provider (usually the most popular)
+    const providerId = providers[0].provider_id;
+    const platformName = PROVIDER_MAP[providerId] || providers[0].provider_name || null;
+    
+    // Cache the result
+    providerCache.set(cacheKey, platformName);
+    return platformName;
+  } catch (error) {
+    console.error(`Failed to fetch watch provider for ${mediaType} ${movieId}:`, error);
+    providerCache.set(cacheKey, null);
+    return null;
+  }
+};
+
+// Batch fetch watch providers for multiple movies
+const fetchWatchProvidersBatch = async (
+  movies: Movie[],
+  region: string = DEFAULT_WATCH_REGION
+): Promise<Map<number, string | null>> => {
+  const providerMap = new Map<number, string | null>();
+  
+  // Fetch providers in parallel (limit to 10 concurrent requests to avoid rate limiting)
+  const batchSize = 10;
+  for (let i = 0; i < movies.length; i += batchSize) {
+    const batch = movies.slice(i, i + batchSize);
+    const promises = batch.map(async (movie) => {
+      const provider = await fetchWatchProvider(
+        movie.id,
+        movie.media_type || 'movie',
+        region
+      );
+      return { id: movie.id, provider };
+    });
+    
+    const results = await Promise.all(promises);
+    results.forEach(({ id, provider }) => {
+      providerMap.set(id, provider);
+    });
+    
+    // Small delay between batches to avoid rate limiting
+    if (i + batchSize < movies.length) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+  
+  return providerMap;
+};
+
+// Export function to fetch provider for a single movie (useful for detail views)
+export const fetchMovieWatchProvider = async (
+  movieId: number,
+  mediaType: 'movie' | 'tv' = 'movie',
+  region: string = DEFAULT_WATCH_REGION
+): Promise<string | null> => {
+  return fetchWatchProvider(movieId, mediaType, region);
+};
+
+// Export function to clear provider cache (useful for region changes)
+export const clearProviderCache = (): void => {
+  providerCache.clear();
 };
 
 const headers = {
@@ -63,7 +180,16 @@ export const fetchMovies = async (page: number, type: MediaType = 'all', genreId
           release_date: item.release_date || item.first_air_date || 'TBA',
           genre_ids: item.genre_ids,
           media_type: item.media_type,
-        })).map(assignPlatform);
+        }));
+        
+        // Fetch watch providers for the first page only (to avoid excessive API calls)
+        if (page === 1 && normalizedResults.length > 0) {
+          const providerMap = await fetchWatchProvidersBatch(normalizedResults);
+          return normalizedResults.map(movie => ({
+            ...movie,
+            platform: (providerMap.get(movie.id) as any) || undefined
+          }));
+        }
         
         return normalizedResults;
       } else {
@@ -108,7 +234,16 @@ export const fetchMovies = async (page: number, type: MediaType = 'all', genreId
         release_date: item.release_date || item.first_air_date || 'TBA',
         genre_ids: item.genre_ids || [],
         media_type: item.media_type || (type === 'tv' ? 'tv' : 'movie'), // Discover endpoints don't return media_type
-    })).map(assignPlatform);
+    }));
+    
+    // Fetch watch providers for the first page only (to avoid excessive API calls)
+    if (page === 1 && normalizedResults.length > 0) {
+      const providerMap = await fetchWatchProvidersBatch(normalizedResults);
+      return normalizedResults.map(movie => ({
+        ...movie,
+        platform: (providerMap.get(movie.id) as any) || undefined
+      }));
+    }
 
     return normalizedResults;
 
@@ -227,10 +362,17 @@ export const searchMovies = async (query: string): Promise<Movie[]> => {
             return (b.vote_average || 0) - (a.vote_average || 0);
         });
         
-        // Remove relevanceScore before returning and assign platforms
-        const normalizedResults: Movie[] = sortedResults.map(({ relevanceScore, ...item }) => 
-            assignPlatform(item)
-        );
+        // Remove relevanceScore before returning
+        const normalizedResults: Movie[] = sortedResults.map(({ relevanceScore, ...item }) => item);
+        
+        // Fetch watch providers for search results (usually fewer results, so we can fetch all)
+        if (normalizedResults.length > 0) {
+          const providerMap = await fetchWatchProvidersBatch(normalizedResults);
+          return normalizedResults.map(movie => ({
+            ...movie,
+            platform: (providerMap.get(movie.id) as any) || undefined
+          }));
+        }
 
         return normalizedResults;
 
