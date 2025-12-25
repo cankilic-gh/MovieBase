@@ -65,7 +65,26 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
         }
 
         if (data.user) {
-          // Always show success if user was created, regardless of email confirmation
+          // Try to sign in automatically after sign up (if email confirmation is disabled)
+          try {
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+            
+            if (!signInError && signInData.user) {
+              // Successfully signed in - close modal and trigger login
+              onLogin();
+              onClose();
+              setEmail('');
+              setPassword('');
+              return;
+            }
+          } catch (autoSignInError) {
+            // Auto sign in failed, but user was created - show success message
+          }
+          
+          // If auto sign in didn't work, show success message
           setSuccess('Account created successfully! You can sign in now.');
           setTimeout(() => {
             setIsSignUp(false);

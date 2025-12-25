@@ -4,10 +4,11 @@ import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import InfiniteScrollGrid from './components/InfiniteScrollGrid';
 import LoginModal from './components/LoginModal';
+import FavoritesModal from './components/FavoritesModal';
 import { Movie, MediaType } from './types';
 import { getBackdropUrl, fetchTrailer } from './services/tmdbService';
 import { supabase } from './services/supabaseClient';
-import { X, Play, Plus } from 'lucide-react';
+import { X, Play, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Genre mapping: Category name -> TMDB Genre ID
@@ -22,10 +23,12 @@ const GENRE_MAP: Record<string, number> = {
 };
 
 // Detail Modal (In-file for simplicity of the prompt architecture, though ideally separate)
-const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void }> = ({ movie, onClose }) => {
+const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void; isLoggedIn: boolean }> = ({ movie, onClose, isLoggedIn }) => {
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [isLoadingTrailer, setIsLoadingTrailer] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isAddingFavorite, setIsAddingFavorite] = useState(false);
 
   useEffect(() => {
     const loadTrailer = async () => {
@@ -36,6 +39,87 @@ const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void }> = ({ mov
     };
     loadTrailer();
   }, [movie.id, movie.media_type]);
+
+  // Check if movie is in favorites
+  useEffect(() => {
+    const checkFavorite = async () => {
+      if (!isLoggedIn) {
+        setIsFavorite(false);
+        return;
+      }
+      
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('favorites')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('movie_id', movie.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+          console.error('Error checking favorite:', error);
+          return;
+        }
+
+        setIsFavorite(!!data);
+      } catch (error) {
+        console.error('Failed to check favorite:', error);
+      }
+    };
+
+    checkFavorite();
+  }, [movie.id, isLoggedIn]);
+
+  const handleAddToFavorites = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!isLoggedIn) {
+      alert('Please login to add favorites');
+      return;
+    }
+
+    setIsAddingFavorite(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Please login to add favorites');
+        return;
+      }
+
+      if (isFavorite) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('movie_id', movie.id);
+
+        if (error) throw error;
+        setIsFavorite(false);
+      } else {
+        // Add to favorites
+        const { error } = await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            movie_id: movie.id,
+            movie_title: movie.title,
+            movie_data: movie
+          });
+
+        if (error) throw error;
+        setIsFavorite(true);
+      }
+    } catch (error: any) {
+      console.error('Failed to update favorite:', error);
+      alert(error.message || 'Failed to update favorite');
+    } finally {
+      setIsAddingFavorite(false);
+    }
+  };
 
   const handlePlayClick = () => {
     if (trailerKey) {
@@ -117,10 +201,23 @@ const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void }> = ({ mov
             <div className="flex items-start justify-between mb-4">
                 <h2 className="text-3xl font-mono font-bold text-white leading-none flex-1 pr-4">{movie.title}</h2>
                 <button 
-                    className="w-10 h-10 flex items-center justify-center rounded border border-white/20 hover:border-cyber-purple hover:text-cyber-purple transition-colors bg-white/5 flex-shrink-0"
-                    title="Add to favorites"
+                    onClick={handleAddToFavorites}
+                    disabled={isAddingFavorite || !isLoggedIn}
+                    className={`w-10 h-10 flex items-center justify-center rounded transition-colors flex-shrink-0 ${
+                        isFavorite 
+                            ? 'text-cyber-cyan bg-cyber-cyan/10' 
+                            : 'hover:text-cyber-cyan bg-white/5'
+                    } ${isAddingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title={isLoggedIn ? (isFavorite ? 'Remove from favorites' : 'Add to favorites') : 'Login to add favorites'}
                 >
-                    <Plus size={20} />
+                    {isAddingFavorite ? (
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                        <Heart 
+                            size={20} 
+                            className={isFavorite ? "fill-cyber-cyan text-cyber-cyan" : ""}
+                        />
+                    )}
                 </button>
             </div>
             
@@ -148,6 +245,7 @@ const App: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<MediaType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -182,8 +280,14 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleLogin = () => {
-    setIsLoggedIn(true);
+  const handleLogin = async () => {
+    // Check session after login to ensure it's persisted
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+    } catch (error) {
+      console.error('Failed to check session after login:', error);
+    }
     setIsLoginOpen(false);
   };
 
@@ -217,6 +321,7 @@ const App: React.FC = () => {
           activeFilter={activeFilter}
           isLoggedIn={isLoggedIn}
           onOpenLogin={() => setIsLoginOpen(true)}
+          onOpenFavorites={() => setIsFavoritesOpen(true)}
         />
 
         <main className="relative z-10 pt-20">
@@ -236,6 +341,7 @@ const App: React.FC = () => {
                     filterType={activeFilter}
                     onClearSearch={handleClearSearch}
                     genreId={genreId}
+                    isLoggedIn={isLoggedIn}
                 />
               </>
             } />
@@ -249,11 +355,20 @@ const App: React.FC = () => {
             onLogin={handleLogin} 
         />
         
+        {isLoggedIn && (
+          <FavoritesModal
+            isOpen={isFavoritesOpen}
+            onClose={() => setIsFavoritesOpen(false)}
+            onMovieClick={setSelectedMovie}
+          />
+        )}
+        
         <AnimatePresence>
             {selectedMovie && (
                 <MovieDetailModal 
                     movie={selectedMovie} 
-                    onClose={() => setSelectedMovie(null)} 
+                    onClose={() => setSelectedMovie(null)}
+                    isLoggedIn={isLoggedIn}
                 />
             )}
         </AnimatePresence>

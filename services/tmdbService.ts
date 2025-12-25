@@ -81,6 +81,10 @@ export const fetchMovies = async (page: number, type: MediaType = 'all', genreId
       }
     }
 
+    if (!endpoint) {
+      return [];
+    }
+
     const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
     
     if (!res.ok) {
@@ -88,6 +92,10 @@ export const fetchMovies = async (page: number, type: MediaType = 'all', genreId
     }
     
     const data: ApiResponse<any> = await res.json();
+    
+    if (!data || !data.results || !Array.isArray(data.results)) {
+      return [];
+    }
     
     // Normalize data (TV shows use 'name' instead of 'title', 'first_air_date' instead of 'release_date')
     const normalizedResults: Movie[] = data.results.map((item: any) => ({
@@ -98,7 +106,7 @@ export const fetchMovies = async (page: number, type: MediaType = 'all', genreId
         overview: item.overview,
         vote_average: item.vote_average,
         release_date: item.release_date || item.first_air_date || 'TBA',
-        genre_ids: item.genre_ids,
+        genre_ids: item.genre_ids || [],
         media_type: item.media_type || (type === 'tv' ? 'tv' : 'movie'), // Discover endpoints don't return media_type
     })).map(assignPlatform);
 

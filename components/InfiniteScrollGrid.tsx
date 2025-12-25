@@ -10,9 +10,10 @@ interface InfiniteScrollGridProps {
   filterType: MediaType;
   onClearSearch?: () => void;
   genreId?: number;
+  isLoggedIn?: boolean;
 }
 
-const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, searchQuery, filterType, onClearSearch, genreId }) => {
+const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, searchQuery, filterType, onClearSearch, genreId, isLoggedIn = false }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -137,6 +138,7 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
                         movie={movie} 
                         onClick={onMovieClick} 
                         variant={cardVariant}
+                        isLoggedIn={isLoggedIn}
                     />
                 );
 

@@ -1,16 +1,94 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Plus } from 'lucide-react';
+import { Play, Heart } from 'lucide-react';
 import { Movie } from '../types';
 import { getImageUrl, getBackdropUrl } from '../services/tmdbService';
+import { supabase } from '../services/supabaseClient';
 
 interface MovieCardProps {
   movie: Movie;
   onClick: (movie: Movie) => void;
   variant?: 'standard' | 'featured' | 'large';
+  isLoggedIn?: boolean;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standard' }) => {
+const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standard', isLoggedIn = false }) => {
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isAddingFavorite, setIsAddingFavorite] = useState(false);
+
+  // Check if movie is in favorites
+  useEffect(() => {
+    const checkFavorite = async () => {
+      if (!isLoggedIn) {
+        setIsFavorite(false);
+        return;
+      }
+      
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('favorites')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('movie_id', movie.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          return;
+        }
+
+        setIsFavorite(!!data);
+      } catch (error) {
+        // Silent fail
+      }
+    };
+
+    checkFavorite();
+  }, [movie.id, isLoggedIn]);
+
+  const handleAddToFavorites = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!isLoggedIn) {
+      return;
+    }
+
+    setIsAddingFavorite(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (isFavorite) {
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('movie_id', movie.id);
+
+        if (error) throw error;
+        setIsFavorite(false);
+      } else {
+        const { error } = await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            movie_id: movie.id,
+            movie_title: movie.title,
+            movie_data: movie
+          });
+
+        if (error) throw error;
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error('Failed to update favorite:', error);
+    } finally {
+      setIsAddingFavorite(false);
+    }
+  };
+
   // Calculate color based on score
   const scoreColor = movie.vote_average >= 7.5 ? '#ffaa00' : movie.vote_average >= 5 ? '#ff003c' : '#555';
   
@@ -62,14 +140,23 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
       <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
         {/* Add to Favorites Button */}
         <button 
-          className="w-10 h-10 flex items-center justify-center rounded border border-white/20 hover:border-cyber-purple hover:text-cyber-purple transition-colors bg-black/80 backdrop-blur-md opacity-0 group-hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            // TODO: Add to favorites functionality
-          }}
-          title="Add to favorites"
+          className={`w-10 h-10 flex items-center justify-center rounded transition-colors bg-black/80 backdrop-blur-md ${
+            isFavorite 
+              ? 'opacity-100 text-cyber-cyan bg-cyber-cyan/20' 
+              : 'opacity-0 group-hover:opacity-100 hover:text-cyber-cyan'
+          } ${isAddingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
+          onClick={handleAddToFavorites}
+          disabled={isAddingFavorite || !isLoggedIn}
+          title={isLoggedIn ? (isFavorite ? 'Remove from favorites' : 'Add to favorites') : 'Login to add favorites'}
         >
-          <Plus size={18} />
+          {isAddingFavorite ? (
+            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Heart 
+              size={18} 
+              className={isFavorite ? "fill-cyber-cyan text-cyber-cyan" : ""}
+            />
+          )}
         </button>
         {/* Circular Score */}
         <div className="flex items-center justify-center w-10 h-10 rounded-full bg-black/80 backdrop-blur-md border border-white/10 shadow-lg">
@@ -148,8 +235,24 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
             <button className="flex-1 flex items-center justify-center gap-2 bg-cyber-cyan/10 hover:bg-cyber-cyan text-cyber-cyan hover:text-black py-2 rounded text-xs font-bold border border-cyber-cyan/50 transition-colors">
                 <Play size={14} /> PLAY
             </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded border border-white/20 hover:border-cyber-purple hover:text-cyber-purple transition-colors bg-white/5">
-                <Plus size={16} />
+            <button 
+              onClick={handleAddToFavorites}
+              disabled={isAddingFavorite || !isLoggedIn}
+              className={`w-8 h-8 flex items-center justify-center rounded transition-colors bg-white/5 ${
+                isFavorite 
+                  ? 'text-cyber-cyan bg-cyber-cyan/20' 
+                  : 'hover:text-cyber-cyan'
+              } ${isAddingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title={isLoggedIn ? (isFavorite ? 'Remove from favorites' : 'Add to favorites') : 'Login to add favorites'}
+            >
+              {isAddingFavorite ? (
+                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Heart 
+                  size={16} 
+                  className={isFavorite ? "fill-cyber-cyan text-cyber-cyan" : ""}
+                />
+              )}
             </button>
             </div>
         )}
