@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Heart, Film, LogOut } from 'lucide-react';
+import { User, Heart, LogOut } from 'lucide-react';
 import { MediaType } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getUserInitials } from '../utils/userHelpers';
@@ -51,9 +51,16 @@ const Navbar: React.FC<NavbarProps> = ({ onFilterChange, activeFilter, isLoggedI
     }`}>
       <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
-          <Film className="text-cyber-cyan" />
-          <span className="font-mono font-bold text-xl tracking-wider text-white">
-            MOVIE<span className="text-cyber-cyan">BASE</span>
+          <span className="font-mono font-bold text-xl tracking-wider" style={{
+            WebkitTextStrokeWidth: '1.5px',
+            WebkitTextStrokeColor: '#ffaa00',
+            color: 'transparent',
+            WebkitTextFillColor: 'transparent'
+          }}>
+            MOVIE<span style={{ 
+              WebkitTextStrokeColor: '#00f3ff',
+              WebkitTextFillColor: 'transparent'
+            }}>BASE</span>
           </span>
         </div>
 
@@ -79,9 +86,9 @@ const Navbar: React.FC<NavbarProps> = ({ onFilterChange, activeFilter, isLoggedI
           {isLoggedIn && onOpenFavorites && (
             <button 
               onClick={onOpenFavorites}
-              className="flex items-center gap-2 text-gray-300 hover:text-cyber-pink transition-colors group"
+              className="flex items-center gap-2 text-gray-300 hover:text-cyber-cyan transition-colors group"
             >
-              <Heart size={20} className="fill-cyber-red text-cyber-red" />
+              <Heart size={20} className="fill-cyber-cyan text-cyber-cyan" />
               <span className="hidden sm:block text-xs font-mono">MY LIST</span>
             </button>
           )}
@@ -89,7 +96,7 @@ const Navbar: React.FC<NavbarProps> = ({ onFilterChange, activeFilter, isLoggedI
           {isLoggedIn && user ? (
             <div className="relative group">
               <button 
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-cyber-cyan to-cyber-purple border border-cyber-cyan/50 hover:border-cyber-cyan transition-all shadow-neon-cyan"
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-cyber-cyan border border-cyber-cyan/50 hover:border-cyber-cyan transition-all shadow-neon-cyan"
                 title={user.email || 'User'}
               >
                 <span className="text-white text-xs font-mono font-bold">

@@ -21,3 +21,123 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #ffaa00;
 }
+
+/* Text Outline/Stroke Utility */
+.text-stroke-amber {
+  -webkit-text-stroke-width: 2px !important;
+  -webkit-text-stroke-color: #ffaa00 !important;
+  text-stroke-width: 2px !important;
+  text-stroke-color: #ffaa00 !important;
+  color: transparent !important;
+}
+
+.text-stroke-cyan {
+  -webkit-text-stroke-width: 2px !important;
+  -webkit-text-stroke-color: #00f3ff !important;
+  text-stroke-width: 2px !important;
+  text-stroke-color: #00f3ff !important;
+  color: transparent !important;
+}
+
+/* Responsive stroke widths */
+@media (min-width: 768px) {
+  .text-stroke-amber {
+    -webkit-text-stroke-width: 3px !important;
+    text-stroke-width: 3px !important;
+  }
+  
+  .text-stroke-cyan {
+    -webkit-text-stroke-width: 3px !important;
+    text-stroke-width: 3px !important;
+  }
+}
+
+/* Large hero title stroke - Force override with high specificity */
+/* Target all possible selectors to prevent any override */
+.hero-title-outline,
+h1.hero-title-outline,
+.hero-title-outline span,
+h1[class*="text-5xl"],
+h1[class*="text-8xl"],
+h1.relative.z-10 {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-fill-color: transparent !important;
+}
+
+/* Force override for any text color classes on hero title */
+h1.relative.z-10 span,
+h1.relative.z-10 > span {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-fill-color: transparent !important;
+}
+
+.hero-title-movie,
+.hero-title-outline .hero-title-movie {
+  -webkit-text-stroke-width: 2px !important;
+  -webkit-text-stroke-color: #ffaa00 !important;
+  text-stroke-width: 2px !important;
+  text-stroke-color: #ffaa00 !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-fill-color: transparent !important;
+}
+
+.hero-title-base,
+.hero-title-outline .hero-title-base {
+  -webkit-text-stroke-width: 2px !important;
+  -webkit-text-stroke-color: #00f3ff !important;
+  text-stroke-width: 2px !important;
+  text-stroke-color: #00f3ff !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-fill-color: transparent !important;
+}
+
+/* Fallback for older class names */
+h1 .text-stroke-hero,
+.text-stroke-hero {
+  -webkit-text-stroke-width: 2px !important;
+  -webkit-text-stroke-color: #ffaa00 !important;
+  text-stroke-width: 2px !important;
+  text-stroke-color: #ffaa00 !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-fill-color: transparent !important;
+}
+
+h1 .text-stroke-hero-cyan,
+.text-stroke-hero-cyan {
+  -webkit-text-stroke-width: 2px !important;
+  -webkit-text-stroke-color: #00f3ff !important;
+  text-stroke-width: 2px !important;
+  text-stroke-color: #00f3ff !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-fill-color: transparent !important;
+}
+
+@media (min-width: 768px) {
+  .hero-title-movie,
+  .hero-title-outline .hero-title-movie {
+    -webkit-text-stroke-width: 4px !important;
+    text-stroke-width: 4px !important;
+  }
+  
+  .hero-title-base,
+  .hero-title-outline .hero-title-base {
+    -webkit-text-stroke-width: 4px !important;
+    text-stroke-width: 4px !important;
+  }
+  
+  .text-stroke-hero {
+    -webkit-text-stroke-width: 4px !important;
+    text-stroke-width: 4px !important;
+  }
+  
+  .text-stroke-hero-cyan {
+    -webkit-text-stroke-width: 4px !important;
+    text-stroke-width: 4px !important;
+  }
+}

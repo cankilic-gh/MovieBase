@@ -12,6 +12,7 @@ interface HeroSectionProps {
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClearSearch, onCategoryFilter, activeCategory }) => {
   const [query, setQuery] = useState('');
+  const [strokeWidth, setStrokeWidth] = useState('2px');
 
   // Sync local query state with searchQuery prop
   useEffect(() => {
@@ -19,6 +20,16 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClea
       setQuery(searchQuery);
     }
   }, [searchQuery]);
+
+  // Set responsive stroke width
+  useEffect(() => {
+    const updateStrokeWidth = () => {
+      setStrokeWidth(window.innerWidth >= 768 ? '4px' : '2px');
+    };
+    updateStrokeWidth();
+    window.addEventListener('resize', updateStrokeWidth);
+    return () => window.removeEventListener('resize', updateStrokeWidth);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,9 +85,36 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClea
                 {/* Bloom Effect */}
                 <div className="absolute inset-0 bg-cyber-cyan/30 blur-3xl opacity-20 group-hover:opacity-60 transition-opacity duration-200" />
                 
-                {/* Main Text */}
-                <h1 className="relative z-10 text-5xl md:text-8xl font-mono font-black text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan via-white to-cyber-purple drop-shadow-[0_0_10px_rgba(255,170,0,0.5)] tracking-tighter">
-                    MOVIE<span className="text-cyber-cyan">BASE</span>
+                {/* Main Text - Outline/Stroke Effect */}
+                <h1 
+                    className="relative z-10 text-5xl md:text-8xl font-mono font-black drop-shadow-[0_0_10px_rgba(255,170,0,0.5)] tracking-tighter hero-title-outline"
+                    style={{
+                        color: 'transparent',
+                        WebkitTextFillColor: 'transparent'
+                    } as React.CSSProperties}
+                >
+                    <span 
+                        className="hero-title-movie"
+                        style={{
+                            WebkitTextStrokeWidth: strokeWidth,
+                            WebkitTextStrokeColor: '#ffaa00',
+                            color: 'transparent',
+                            WebkitTextFillColor: 'transparent'
+                        } as React.CSSProperties}
+                    >
+                        MOVIE
+                    </span>
+                    <span 
+                        className="hero-title-base"
+                        style={{
+                            WebkitTextStrokeWidth: strokeWidth,
+                            WebkitTextStrokeColor: '#00f3ff',
+                            color: 'transparent',
+                            WebkitTextFillColor: 'transparent'
+                        } as React.CSSProperties}
+                    >
+                        BASE
+                    </span>
                 </h1>
 
                 {/* Glitch Layer 1 (Red Shift) */}
