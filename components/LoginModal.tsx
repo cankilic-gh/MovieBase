@@ -181,7 +181,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Email address"
                         required
-                        className="w-full pl-10 pr-4 py-3 bg-black/50 border border-white/10 rounded text-white placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-cyber-cyan focus:shadow-[0_0_10px_rgba(255,170,0,0.2)] transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-black/50 border border-white/10 rounded text-white placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-cyber-cyan focus:shadow-[0_0_10px_rgba(255,215,0,0.2)] transition-all"
                       />
                     </div>
                     <div className="relative">
@@ -193,7 +193,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
                         placeholder="Password"
                         required
                         minLength={6}
-                        className="w-full pl-10 pr-4 py-3 bg-black/50 border border-white/10 rounded text-white placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-cyber-cyan focus:shadow-[0_0_10px_rgba(255,170,0,0.2)] transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-black/50 border border-white/10 rounded text-white placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-cyber-cyan focus:shadow-[0_0_10px_rgba(255,215,0,0.2)] transition-all"
                       />
                     </div>
                   </div>
@@ -219,13 +219,13 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
                       <span className="animate-pulse">PROCESSING...</span>
                     ) : (
                       <>
-                        <div className="w-2 h-2 bg-cyber-cyan rounded-full group-hover:shadow-[0_0_10px_#00f3ff]" />
+                    <div className="w-2 h-2 bg-cyber-cyan rounded-full group-hover:shadow-[0_0_10px_#00f3ff]" />
                         {isSignUp ? 'CREATE ACCOUNT' : 'SIGN IN'}
                       </>
                     )}
                   </button>
                 </form>
-
+                  
                 <button 
                   onClick={() => {
                     setIsSignUp(!isSignUp);
@@ -235,7 +235,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
                   className="w-full mt-4 py-3 bg-transparent hover:bg-white/5 border border-gray-700 text-gray-300 font-mono rounded transition-all text-sm"
                 >
                   {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Create New ID'}
-                </button>
+                  </button>
 
                 <div className="mt-6 flex items-center gap-2 text-xs text-gray-500 font-mono">
                     <Lock size={12} />

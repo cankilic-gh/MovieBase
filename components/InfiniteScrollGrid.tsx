@@ -74,7 +74,7 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
     <div className="w-full max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-mono text-white flex items-center gap-2">
-                <span className="w-2 h-8 bg-cyber-purple block shadow-[0_0_10px_#ff003c]"></span>
+                <span className="w-2 h-8 bg-cyber-purple block shadow-[0_0_10px_#00F3FF]"></span>
                 {searchQuery ? `Results for "${searchQuery}"` : 'Trending In Sector 01'}
             </h2>
             <div className="flex items-center gap-3">
@@ -87,8 +87,8 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
                         CLEAR SEARCH
                     </button>
                 )}
-                <div className="text-xs font-mono text-cyber-cyan border border-cyber-cyan/30 px-2 py-1 rounded bg-cyber-cyan/5">
-                    {movies.length} TITLES FOUND
+            <div className="text-xs font-mono text-cyber-cyan border border-cyber-cyan/30 px-2 py-1 rounded bg-cyber-cyan/5">
+                {movies.length} TITLES FOUND
                 </div>
             </div>
         </div>

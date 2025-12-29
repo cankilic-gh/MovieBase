@@ -30,10 +30,10 @@ const PROVIDER_MAP: Record<number, string> = {
 };
 
 export const getImageUrl = (path: string | null) => 
-  path ? `${IMAGE_BASE_URL}${path}` : 'https://placehold.co/500x750/1a0b0b/ffaa00?text=NO+IMAGE';
+  path ? `${IMAGE_BASE_URL}${path}` : 'https://placehold.co/500x750/1a0b0b/FFD700?text=NO+IMAGE';
 
 export const getBackdropUrl = (path: string | null) =>
-  path ? `${BACKDROP_BASE_URL}${path}` : 'https://placehold.co/1920x1080/1a0b0b/ffaa00?text=NO+SIGNAL';
+  path ? `${BACKDROP_BASE_URL}${path}` : 'https://placehold.co/1920x1080/1a0b0b/FFD700?text=NO+SIGNAL';
 
 // Cache for watch providers to avoid excessive API calls
 const providerCache = new Map<string, string | null>();
@@ -193,7 +193,7 @@ export const fetchMovies = async (page: number, type: MediaType = 'all', genreId
         
         return normalizedResults;
       } else {
-        endpoint = `/trending/all/week?language=en-US&page=${page}`;
+      endpoint = `/trending/all/week?language=en-US&page=${page}`;
       }
     } else if (type === 'movie') {
       endpoint = `/discover/movie?include_adult=false&include_video=false&language=en-US&page=${page}&sort_by=popularity.desc`;
@@ -311,25 +311,25 @@ export const searchMovies = async (query: string): Promise<Movie[]> => {
         const searchPromises = uniqueQueries.map(async (searchQuery) => {
             try {
                 const endpoint = `/search/multi?query=${encodeURIComponent(searchQuery)}&include_adult=false&language=en-US&page=1`;
-                const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
-                
+        const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
+        
                 if (!res.ok) return [];
-                
-                const data = await res.json();
-                
-                // Filter out 'person' results and normalize
+
+        const data = await res.json();
+
+        // Filter out 'person' results and normalize
                 return data.results
-                    .filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv')
-                    .map((item: any) => ({
-                        id: item.id,
-                        title: item.title || item.name,
-                        poster_path: item.poster_path,
-                        backdrop_path: item.backdrop_path,
-                        overview: item.overview,
-                        vote_average: item.vote_average,
-                        release_date: item.release_date || item.first_air_date || 'TBA',
-                        genre_ids: item.genre_ids,
-                        media_type: item.media_type
+            .filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv')
+            .map((item: any) => ({
+                id: item.id,
+                title: item.title || item.name,
+                poster_path: item.poster_path,
+                backdrop_path: item.backdrop_path,
+                overview: item.overview,
+                vote_average: item.vote_average,
+                release_date: item.release_date || item.first_air_date || 'TBA',
+                genre_ids: item.genre_ids,
+                media_type: item.media_type
                     }));
             } catch (error) {
                 console.error(`Search error for query "${searchQuery}"`, error);

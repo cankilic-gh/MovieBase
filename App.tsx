@@ -287,12 +287,12 @@ const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void; isLoggedIn
                 />
             ) : (
                 <>
-                    <img 
-                        src={getBackdropUrl(movie.backdrop_path)} 
-                        alt={movie.title}
-                        className="w-full h-full object-cover opacity-60"
-                    />
-                    {/* Play Button Overlay */}
+            <img 
+                src={getBackdropUrl(movie.backdrop_path)} 
+                alt={movie.title}
+                className="w-full h-full object-cover opacity-60"
+            />
+            {/* Play Button Overlay */}
                     <div 
                         className="absolute inset-0 flex items-center justify-center group cursor-pointer"
                         onClick={handlePlayClick}
@@ -302,16 +302,16 @@ const MovieDetailModal: React.FC<{ movie: Movie; onClose: () => void; isLoggedIn
                                 <div className="w-8 h-8 border-2 border-cyber-cyan border-t-transparent rounded-full animate-spin" />
                             </div>
                         ) : trailerKey ? (
-                            <div className="w-16 h-16 rounded-full bg-cyber-cyan/20 backdrop-blur border border-cyber-cyan/50 flex items-center justify-center group-hover:scale-110 transition-transform shadow-neon-cyan">
-                                <Play className="text-white ml-1 fill-white" size={32} />
-                            </div>
+                <div className="w-16 h-16 rounded-full bg-cyber-cyan/20 backdrop-blur border border-cyber-cyan/50 flex items-center justify-center group-hover:scale-110 transition-transform shadow-neon-cyan">
+                    <Play className="text-white ml-1 fill-white" size={32} />
+                </div>
                         ) : (
                             <div className="text-center p-4 bg-black/50 rounded backdrop-blur">
                                 <p className="text-gray-400 text-sm font-mono">No trailer available</p>
                             </div>
                         )}
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-cyber-dark to-transparent" />
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-cyber-dark to-transparent" />
                 </>
             )}
         </div>
@@ -494,7 +494,7 @@ const App: React.FC = () => {
             {selectedMovie && (
                 <MovieDetailModal 
                     movie={selectedMovie} 
-                    onClose={() => setSelectedMovie(null)}
+                    onClose={() => setSelectedMovie(null)} 
                     isLoggedIn={isLoggedIn}
                 />
             )}

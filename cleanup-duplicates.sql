@@ -35,3 +35,4 @@ GROUP BY user_id, movie_id
 HAVING COUNT(*) > 1;
 -- Should return 0 rows
 
+

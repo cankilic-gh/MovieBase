@@ -31,3 +31,4 @@ export const getUserInitials = (user: any): string => {
   return 'U';
 };
 
+

@@ -11,9 +11,9 @@ export default {
           black: '#030005',
           dark: '#0f0505',
           panel: '#1a0b0b',
-          cyan: '#ffaa00', // Amber
-          purple: '#ff003c', // Crimson
-          green: '#ffD700', // Gold
+          cyan: '#FFD700', // Cyberpunk Yellow (main accent)
+          purple: '#00F3FF', // Cyberpunk Cyan Glow
+          green: '#6B8E6B', // Muted Green
           red: '#ff4d00',
         }
       },
@@ -22,12 +22,12 @@ export default {
         mono: ['Orbitron', 'monospace'],
       },
       backgroundImage: {
-        'cyber-grid': "linear-gradient(rgba(255, 170, 0, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 170, 0, 0.03) 1px, transparent 1px)",
-        'holographic': "linear-gradient(135deg, rgba(255, 170, 0, 0.1) 0%, rgba(255,0,60,0.01) 100%)",
+        'cyber-grid': "linear-gradient(rgba(255, 215, 0, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 215, 0, 0.03) 1px, transparent 1px)",
+        'holographic': "linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(0,243,255,0.01) 100%)",
       },
       boxShadow: {
-        'neon-cyan': '0 0 10px rgba(255, 170, 0, 0.5), 0 0 20px rgba(255, 170, 0, 0.3)',
-        'neon-purple': '0 0 10px rgba(255, 0, 60, 0.5), 0 0 20px rgba(255, 0, 60, 0.3)',
+        'neon-cyan': '0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3)',
+        'neon-purple': '0 0 10px rgba(0, 243, 255, 0.5), 0 0 20px rgba(0, 243, 255, 0.3)',
       },
       animation: {
         'glitch': 'glitch 1s linear infinite',

@@ -119,3 +119,4 @@ export const useFavorites = (isLoggedIn: boolean) => {
   };
 };
 
+

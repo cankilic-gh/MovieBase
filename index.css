@@ -19,23 +19,23 @@ body {
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #ffaa00;
+  background: #FFD700;
 }
 
 /* Text Outline/Stroke Utility */
 .text-stroke-amber {
   -webkit-text-stroke-width: 2px !important;
-  -webkit-text-stroke-color: #ffaa00 !important;
+  -webkit-text-stroke-color: #FFD700 !important;
   text-stroke-width: 2px !important;
-  text-stroke-color: #ffaa00 !important;
+  text-stroke-color: #FFD700 !important;
   color: transparent !important;
 }
 
 .text-stroke-cyan {
   -webkit-text-stroke-width: 2px !important;
-  -webkit-text-stroke-color: #00f3ff !important;
+  -webkit-text-stroke-color: #00F3FF !important;
   text-stroke-width: 2px !important;
-  text-stroke-color: #00f3ff !important;
+  text-stroke-color: #00F3FF !important;
   color: transparent !important;
 }
 
@@ -76,9 +76,9 @@ h1.relative.z-10 > span {
 .hero-title-movie,
 .hero-title-outline .hero-title-movie {
   -webkit-text-stroke-width: 2px !important;
-  -webkit-text-stroke-color: #ffaa00 !important;
+  -webkit-text-stroke-color: #FFD700 !important;
   text-stroke-width: 2px !important;
-  text-stroke-color: #ffaa00 !important;
+  text-stroke-color: #FFD700 !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
   text-fill-color: transparent !important;
@@ -87,9 +87,9 @@ h1.relative.z-10 > span {
 .hero-title-base,
 .hero-title-outline .hero-title-base {
   -webkit-text-stroke-width: 2px !important;
-  -webkit-text-stroke-color: #00f3ff !important;
+  -webkit-text-stroke-color: #00F3FF !important;
   text-stroke-width: 2px !important;
-  text-stroke-color: #00f3ff !important;
+  text-stroke-color: #00F3FF !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
   text-fill-color: transparent !important;
@@ -99,9 +99,9 @@ h1.relative.z-10 > span {
 h1 .text-stroke-hero,
 .text-stroke-hero {
   -webkit-text-stroke-width: 2px !important;
-  -webkit-text-stroke-color: #ffaa00 !important;
+  -webkit-text-stroke-color: #FFD700 !important;
   text-stroke-width: 2px !important;
-  text-stroke-color: #ffaa00 !important;
+  text-stroke-color: #FFD700 !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
   text-fill-color: transparent !important;
@@ -110,9 +110,9 @@ h1 .text-stroke-hero,
 h1 .text-stroke-hero-cyan,
 .text-stroke-hero-cyan {
   -webkit-text-stroke-width: 2px !important;
-  -webkit-text-stroke-color: #00f3ff !important;
+  -webkit-text-stroke-color: #00F3FF !important;
   text-stroke-width: 2px !important;
-  text-stroke-color: #00f3ff !important;
+  text-stroke-color: #00F3FF !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
   text-fill-color: transparent !important;

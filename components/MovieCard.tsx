@@ -205,7 +205,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
   };
 
   // Calculate color based on score
-  const scoreColor = movie.vote_average >= 7.5 ? '#ffaa00' : movie.vote_average >= 5 ? '#ff003c' : '#555';
+  const scoreColor = movie.vote_average >= 7.5 ? '#FFD700' : movie.vote_average >= 5 ? '#00F3FF' : '#555';
   
   const getPlatformColor = (p?: string) => {
     if (!p) return 'text-white';
@@ -287,26 +287,26 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
         )}
         {/* Circular Score */}
         <div className="flex items-center justify-center w-10 h-10 rounded-full bg-black/80 backdrop-blur-md border border-white/10 shadow-lg">
-          <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-            <path
-              className="text-gray-800"
-              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-            />
-            <path
-              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              fill="none"
-              stroke={scoreColor}
-              strokeWidth="3"
-              strokeDasharray={`${movie.vote_average * 10}, 100`}
-              strokeLinecap="round"
-            />
-          </svg>
-          <span className="absolute text-[10px] font-bold text-white font-mono">
-            {movie.vote_average.toFixed(1)}
-          </span>
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+          <path
+            className="text-gray-800"
+            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+          />
+          <path
+            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            fill="none"
+            stroke={scoreColor}
+            strokeWidth="3"
+            strokeDasharray={`${movie.vote_average * 10}, 100`}
+            strokeLinecap="round"
+          />
+        </svg>
+        <span className="absolute text-[10px] font-bold text-white font-mono">
+          {movie.vote_average.toFixed(1)}
+        </span>
         </div>
       </div>
 

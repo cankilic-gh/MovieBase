@@ -53,12 +53,12 @@ const Navbar: React.FC<NavbarProps> = ({ onFilterChange, activeFilter, isLoggedI
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
           <span className="font-mono font-bold text-xl tracking-wider" style={{
             WebkitTextStrokeWidth: '1.5px',
-            WebkitTextStrokeColor: '#ffaa00',
+            WebkitTextStrokeColor: '#FFD700',
             color: 'transparent',
             WebkitTextFillColor: 'transparent'
           }}>
             MOVIE<span style={{ 
-              WebkitTextStrokeColor: '#00f3ff',
+              WebkitTextStrokeColor: '#00F3FF',
               WebkitTextFillColor: 'transparent'
             }}>BASE</span>
           </span>
@@ -84,13 +84,13 @@ const Navbar: React.FC<NavbarProps> = ({ onFilterChange, activeFilter, isLoggedI
         {/* User Actions */}
         <div className="flex items-center gap-4">
           {isLoggedIn && onOpenFavorites && (
-            <button 
+          <button 
               onClick={onOpenFavorites}
               className="flex items-center gap-2 text-gray-300 hover:text-cyber-cyan transition-colors group"
-            >
+          >
               <Heart size={20} className="fill-cyber-cyan text-cyber-cyan" />
-              <span className="hidden sm:block text-xs font-mono">MY LIST</span>
-            </button>
+            <span className="hidden sm:block text-xs font-mono">MY LIST</span>
+          </button>
           )}
           
           {isLoggedIn && user ? (
@@ -121,12 +121,12 @@ const Navbar: React.FC<NavbarProps> = ({ onFilterChange, activeFilter, isLoggedI
               </div>
             </div>
           ) : (
-            <button 
-              onClick={onOpenLogin}
-              className="flex items-center justify-center w-9 h-9 rounded bg-white/5 border border-white/20 hover:border-cyber-cyan hover:bg-cyber-cyan/10 transition-all"
-            >
+          <button 
+            onClick={onOpenLogin}
+            className="flex items-center justify-center w-9 h-9 rounded bg-white/5 border border-white/20 hover:border-cyber-cyan hover:bg-cyber-cyan/10 transition-all"
+          >
               <User size={18} className="text-white" />
-            </button>
+          </button>
           )}
         </div>
       </div>

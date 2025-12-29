@@ -87,7 +87,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClea
                 
                 {/* Main Text - Outline/Stroke Effect */}
                 <h1 
-                    className="relative z-10 text-5xl md:text-8xl font-mono font-black drop-shadow-[0_0_10px_rgba(255,170,0,0.5)] tracking-tighter hero-title-outline"
+                    className="relative z-10 text-5xl md:text-8xl font-mono font-black drop-shadow-[0_0_10px_rgba(255,215,0,0.5)] tracking-tighter hero-title-outline"
                     style={{
                         color: 'transparent',
                         WebkitTextFillColor: 'transparent'
@@ -97,7 +97,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClea
                         className="hero-title-movie"
                         style={{
                             WebkitTextStrokeWidth: strokeWidth,
-                            WebkitTextStrokeColor: '#ffaa00',
+                            WebkitTextStrokeColor: '#FFD700',
                             color: 'transparent',
                             WebkitTextFillColor: 'transparent'
                         } as React.CSSProperties}
@@ -182,12 +182,12 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClea
                         onClick={() => tag === 'All' ? onCategoryFilter?.(null) : handleCategoryClick(tag)}
                         className={`px-3 py-1 rounded-sm border text-xs font-mono uppercase cursor-pointer transition-all ${
                             isActive 
-                                ? 'border-cyber-cyan bg-cyber-cyan text-black shadow-[0_0_10px_#ffaa00]' 
-                                : 'border-cyber-cyan/30 text-cyber-cyan hover:bg-cyber-cyan hover:text-black hover:shadow-[0_0_10px_#ffaa00]'
+                                ? 'border-cyber-cyan bg-cyber-cyan text-black shadow-[0_0_10px_#FFD700]' 
+                                : 'border-cyber-cyan/30 text-cyber-cyan hover:bg-cyber-cyan hover:text-black hover:shadow-[0_0_10px_#FFD700]'
                         }`}
                     >
-                        {tag}
-                    </span>
+                    {tag}
+                </span>
                 );
             })}
         </motion.div>
