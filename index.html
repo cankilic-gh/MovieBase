@@ -7,7 +7,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=Orbitron:wght@400;500;700;900&family=Bungee:wght@400&family=Bebas+Neue&display=swap" rel="stylesheet">
     
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,10 +20,10 @@
                 black: '#030005',
                 dark: '#0f0505',
                 panel: '#1a0b0b',
-                cyan: '#FFD700', // Cyberpunk Yellow
-                purple: '#00F3FF', // Cyberpunk Cyan Glow
-                green: '#6B8E6B', // Muted Green
-                red: '#ff4d00',
+                cyan: '#00F3FF', // Neon Cyan
+                purple: '#FF00FF', // Neon Magenta
+                green: '#00FF88', // Neon Green
+                red: '#DC143C', // Crimson Red
               }
             },
             fontFamily: {
@@ -31,11 +31,11 @@
               mono: ['Orbitron', 'monospace'],
             },
             backgroundImage: {
-              'cyber-grid': "linear-gradient(rgba(255, 215, 0, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 215, 0, 0.03) 1px, transparent 1px)",
-              'holographic': "linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(0,243,255,0.01) 100%)",
+              'cyber-grid': "linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px)",
+              'holographic': "linear-gradient(135deg, rgba(220, 20, 60, 0.1) 0%, rgba(0,243,255,0.01) 100%)",
             },
             boxShadow: {
-              'neon-cyan': '0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3)',
+              'neon-cyan': '0 0 10px rgba(0, 243, 255, 0.5), 0 0 20px rgba(0, 243, 255, 0.3)',
               'neon-purple': '0 0 10px rgba(0, 243, 255, 0.5), 0 0 20px rgba(0, 243, 255, 0.3)',
             },
             animation: {
@@ -87,7 +87,7 @@
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #FFD700;
+        background: #DC143C;
       }
     </style>
   <script type="importmap">

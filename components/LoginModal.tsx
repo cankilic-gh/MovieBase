@@ -181,7 +181,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Email address"
                         required
-                        className="w-full pl-10 pr-4 py-3 bg-black/50 border border-white/10 rounded text-white placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-cyber-cyan focus:shadow-[0_0_10px_rgba(255,215,0,0.2)] transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-black/50 border border-white/10 rounded text-white placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-cyber-cyan focus:shadow-[0_0_10px_rgba(220,20,60,0.2)] transition-all"
                       />
                     </div>
                     <div className="relative">
@@ -193,7 +193,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin }) => 
                         placeholder="Password"
                         required
                         minLength={6}
-                        className="w-full pl-10 pr-4 py-3 bg-black/50 border border-white/10 rounded text-white placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-cyber-cyan focus:shadow-[0_0_10px_rgba(255,215,0,0.2)] transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-black/50 border border-white/10 rounded text-white placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-cyber-cyan focus:shadow-[0_0_10px_rgba(220,20,60,0.2)] transition-all"
                       />
                     </div>
                   </div>
