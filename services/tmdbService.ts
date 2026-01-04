@@ -30,10 +30,10 @@ const PROVIDER_MAP: Record<number, string> = {
 };
 
 export const getImageUrl = (path: string | null) => 
-  path ? `${IMAGE_BASE_URL}${path}` : 'https://placehold.co/500x750/1a0b0b/FFD700?text=NO+IMAGE';
+  path ? `${IMAGE_BASE_URL}${path}` : 'https://placehold.co/500x750/1a0b0b/DC143C?text=NO+IMAGE';
 
 export const getBackdropUrl = (path: string | null) =>
-  path ? `${BACKDROP_BASE_URL}${path}` : 'https://placehold.co/1920x1080/1a0b0b/FFD700?text=NO+SIGNAL';
+  path ? `${BACKDROP_BASE_URL}${path}` : 'https://placehold.co/1920x1080/1a0b0b/DC143C?text=NO+SIGNAL';
 
 // Cache for watch providers to avoid excessive API calls
 const providerCache = new Map<string, string | null>();
