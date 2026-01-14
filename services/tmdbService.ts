@@ -14,9 +14,11 @@ const DEFAULT_WATCH_REGION = 'US';
 const PROVIDER_MAP: Record<number, string> = {
   8: 'Netflix',
   9: 'Prime Video',
+  119: 'Prime Video',
   337: 'Disney+',
   15: 'Hulu',
   31: 'HBO Max',
+  1899: 'Max',
   350: 'Apple TV+',
   2: 'Apple TV',
   3: 'Google Play Movies',
@@ -27,6 +29,10 @@ const PROVIDER_MAP: Record<number, string> = {
   531: 'Paramount+',
   619: 'Starz',
   626: 'Showtime',
+  387: 'Peacock',
+  386: 'Peacock',
+  1770: 'Paramount+',
+  584: 'Discovery+',
 };
 
 export const getImageUrl = (path: string | null) => 
@@ -38,14 +44,27 @@ export const getBackdropUrl = (path: string | null) =>
 // Cache for watch providers to avoid excessive API calls
 const providerCache = new Map<string, string | null>();
 
+// Check if a movie is currently in theatres (released within last 60 days, no streaming yet)
+const isInTheatres = (releaseDate: string | undefined): boolean => {
+  if (!releaseDate || releaseDate === 'TBA') return false;
+
+  const release = new Date(releaseDate);
+  const now = new Date();
+  const daysSinceRelease = (now.getTime() - release.getTime()) / (1000 * 60 * 60 * 24);
+
+  // Movie is in theatres if released within last 60 days
+  return daysSinceRelease >= 0 && daysSinceRelease <= 60;
+};
+
 // Fetch watch provider for a single movie/TV show
 const fetchWatchProvider = async (
-  movieId: number, 
+  movieId: number,
   mediaType: 'movie' | 'tv' = 'movie',
-  region: string = DEFAULT_WATCH_REGION
+  region: string = DEFAULT_WATCH_REGION,
+  releaseDate?: string
 ): Promise<string | null> => {
   const cacheKey = `${mediaType}-${movieId}-${region}`;
-  
+
   // Check cache first
   if (providerCache.has(cacheKey)) {
     return providerCache.get(cacheKey) || null;
@@ -54,39 +73,58 @@ const fetchWatchProvider = async (
   try {
     const endpoint = `/${mediaType}/${movieId}/watch/providers`;
     const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
-    
+
     if (!res.ok) {
-      // Cache null result to avoid retrying failed requests
+      // For movies, check if it's in theatres
+      if (mediaType === 'movie' && isInTheatres(releaseDate)) {
+        providerCache.set(cacheKey, 'Theatre');
+        return 'Theatre';
+      }
       providerCache.set(cacheKey, null);
       return null;
     }
-    
+
     const data = await res.json();
-    
+
     // Get providers for the specified region
     const regionData = data.results?.[region];
     if (!regionData) {
+      // No streaming in this region - check if in theatres
+      if (mediaType === 'movie' && isInTheatres(releaseDate)) {
+        providerCache.set(cacheKey, 'Theatre');
+        return 'Theatre';
+      }
       providerCache.set(cacheKey, null);
       return null;
     }
-    
+
     // Prefer flatrate (subscription) providers, then rent, then buy
     const providers = regionData.flatrate || regionData.rent || regionData.buy || [];
-    
+
     if (providers.length === 0) {
+      // No providers - check if in theatres
+      if (mediaType === 'movie' && isInTheatres(releaseDate)) {
+        providerCache.set(cacheKey, 'Theatre');
+        return 'Theatre';
+      }
       providerCache.set(cacheKey, null);
       return null;
     }
-    
+
     // Get the first provider (usually the most popular)
     const providerId = providers[0].provider_id;
     const platformName = PROVIDER_MAP[providerId] || providers[0].provider_name || null;
-    
+
     // Cache the result
     providerCache.set(cacheKey, platformName);
     return platformName;
   } catch (error) {
     console.error(`Failed to fetch watch provider for ${mediaType} ${movieId}:`, error);
+    // On error, check if in theatres
+    if (mediaType === 'movie' && isInTheatres(releaseDate)) {
+      providerCache.set(cacheKey, 'Theatre');
+      return 'Theatre';
+    }
     providerCache.set(cacheKey, null);
     return null;
   }
@@ -98,7 +136,7 @@ const fetchWatchProvidersBatch = async (
   region: string = DEFAULT_WATCH_REGION
 ): Promise<Map<number, string | null>> => {
   const providerMap = new Map<number, string | null>();
-  
+
   // Fetch providers in parallel (limit to 10 concurrent requests to avoid rate limiting)
   const batchSize = 10;
   for (let i = 0; i < movies.length; i += batchSize) {
@@ -107,22 +145,23 @@ const fetchWatchProvidersBatch = async (
       const provider = await fetchWatchProvider(
         movie.id,
         movie.media_type || 'movie',
-        region
+        region,
+        movie.release_date
       );
       return { id: movie.id, provider };
     });
-    
+
     const results = await Promise.all(promises);
     results.forEach(({ id, provider }) => {
       providerMap.set(id, provider);
     });
-    
+
     // Small delay between batches to avoid rate limiting
     if (i + batchSize < movies.length) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
-  
+
   return providerMap;
 };
 
