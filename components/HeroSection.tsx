@@ -55,7 +55,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClea
   };
 
   return (
-    <div className="relative w-full h-[60vh] flex flex-col items-center justify-center overflow-hidden border-b border-cyber-cyan/30 shadow-neon-cyan/50">
+    <div className="relative w-full h-[60vh] flex flex-col items-center justify-center overflow-hidden">
       {/* Background Image - Retro Video Store Theme */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-cyber-black/70 z-10 mix-blend-multiply" />
@@ -184,27 +184,38 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClea
             </div>
         </motion.form>
 
-        {/* Categories / Tags */}
-        <motion.div 
+        {/* Categories / Tags - Enhanced with stagger animation */}
+        <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
             className="mt-8 flex flex-wrap justify-center gap-3"
         >
-            {['All', 'Action', 'Comedy', 'Drama', 'Horror', 'Romance', 'Adventure', 'Kids'].map((tag) => {
+            {['All', 'Action', 'Comedy', 'Drama', 'Horror', 'Romance', 'Adventure', 'Kids'].map((tag, index) => {
                 const isActive = tag === 'All' ? !activeCategory : activeCategory === tag;
                 return (
-                    <span 
-                        key={tag} 
+                    <motion.span
+                        key={tag}
                         onClick={() => tag === 'All' ? onCategoryFilter?.(null) : handleCategoryClick(tag)}
                         className={`px-3 py-1 rounded-sm border text-xs font-mono uppercase font-bold cursor-pointer transition-all duration-300 ${
-                            isActive 
-                                ? 'border-cyber-cyan bg-cyber-cyan/30 text-cyber-cyan shadow-neon-cyan animate-pulse-neon' 
-                                : 'border-cyber-cyan/30 text-cyber-cyan/70 hover:bg-cyber-cyan/20 hover:text-cyber-cyan hover:border-cyber-cyan/50 hover:shadow-neon-cyan/50'
+                            isActive
+                                ? 'border-cyber-cyan bg-cyber-cyan/30 text-cyber-cyan shadow-neon-cyan'
+                                : 'border-cyber-cyan/30 text-cyber-cyan/70'
                         }`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.6 + index * 0.05, duration: 0.3 }}
+                        whileHover={{
+                            scale: 1.1,
+                            y: -3,
+                            backgroundColor: 'rgba(0, 243, 255, 0.2)',
+                            borderColor: 'rgba(0, 243, 255, 0.6)',
+                            boxShadow: '0 0 20px rgba(0, 243, 255, 0.4)'
+                        }}
+                        whileTap={{ scale: 0.95 }}
                     >
-                    {tag}
-                </span>
+                        {tag}
+                    </motion.span>
                 );
             })}
         </motion.div>

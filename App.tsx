@@ -439,9 +439,43 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
-      <div className="min-h-screen bg-cyber-black text-gray-100 font-sans selection:bg-cyber-cyan selection:text-black">
+      <motion.div
+        className="min-h-screen bg-cyber-black text-gray-100 font-sans selection:bg-cyber-cyan selection:text-black"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
         {/* Decorative Grid Background */}
         <div className="fixed inset-0 bg-cyber-grid bg-[length:40px_40px] z-0 pointer-events-none opacity-20" />
+
+        {/* Meteors Effect */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute h-0.5 rounded-full bg-gradient-to-r from-cyber-cyan to-transparent"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: '-5%',
+                width: `${Math.random() * 100 + 50}px`,
+                transform: 'rotate(215deg)',
+                boxShadow: '0 0 10px rgba(0, 243, 255, 0.5)'
+              }}
+              initial={{ y: -100, opacity: 0 }}
+              animate={{
+                y: ['0vh', '120vh'],
+                opacity: [0, 1, 1, 0]
+              }}
+              transition={{
+                duration: Math.random() * 3 + 2,
+                delay: Math.random() * 10,
+                repeat: Infinity,
+                repeatDelay: Math.random() * 15 + 5,
+                ease: 'linear'
+              }}
+            />
+          ))}
+        </div>
         
         <Navbar 
           onFilterChange={setActiveFilter} 
@@ -492,14 +526,14 @@ const App: React.FC = () => {
         
         <AnimatePresence>
             {selectedMovie && (
-                <MovieDetailModal 
-                    movie={selectedMovie} 
-                    onClose={() => setSelectedMovie(null)} 
+                <MovieDetailModal
+                    movie={selectedMovie}
+                    onClose={() => setSelectedMovie(null)}
                     isLoggedIn={isLoggedIn}
                 />
             )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </HashRouter>
   );
 };
