@@ -8,6 +8,8 @@
 [![Supabase](https://img.shields.io/badge/Supabase-2.89-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.3-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 
+🌐 **Live Demo:** [moviebase.thegridbase.com](https://moviebase.thegridbase.com)
+
 ---
 
 ## ✨ Features
@@ -51,7 +53,7 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/MovieBase.git
+   git clone https://github.com/cankilic-gh/MovieBase.git
    cd MovieBase
    ```
 
@@ -266,7 +268,7 @@ This project is private and proprietary.
 **Can Kilic**
 
 - Portfolio: [cankilic.com](https://cankilic.com)
-- GitHub: [@yourusername](https://github.com/yourusername)
+- GitHub: [@cankilic-gh](https://github.com/cankilic-gh)
 
 ---
 
