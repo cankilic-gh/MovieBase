@@ -3,16 +3,17 @@ import { User, Heart, LogOut } from 'lucide-react';
 import { MediaType } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { getUserInitials } from '../utils/userHelpers';
+import { useAuth } from '../context/AuthContext';
 
 interface NavbarProps {
   onFilterChange: (type: MediaType) => void;
   activeFilter: MediaType;
-  isLoggedIn: boolean;
   onOpenLogin: () => void;
   onOpenFavorites?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onFilterChange, activeFilter, isLoggedIn, onOpenLogin, onOpenFavorites }) => {
+const Navbar: React.FC<NavbarProps> = ({ onFilterChange, activeFilter, onOpenLogin, onOpenFavorites }) => {
+  const { isLoggedIn } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<any>(null);
 

@@ -1,204 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Heart } from 'lucide-react';
 import { Movie } from '../types';
 import { getImageUrl, getBackdropUrl } from '../services/tmdbService';
-import { supabase } from '../services/supabaseClient';
+import { useFavorites } from '../hooks/useFavorites';
+import { useAuth } from '../context/AuthContext';
 
 interface MovieCardProps {
   movie: Movie;
   onClick: (movie: Movie) => void;
   variant?: 'standard' | 'featured' | 'large';
-  isLoggedIn?: boolean;
-  hideHeartButton?: boolean; // Hide the built-in heart button (useful for FavoritesModal)
+  hideHeartButton?: boolean;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standard', isLoggedIn = false, hideHeartButton = false }) => {
-  const [isFavorite, setIsFavorite] = useState(false);
+const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standard', hideHeartButton = false }) => {
+  const { isLoggedIn } = useAuth();
+  const { isFavorite, toggleFavorite } = useFavorites(isLoggedIn);
   const [isAddingFavorite, setIsAddingFavorite] = useState(false);
 
-  // Check if movie is in favorites
-  useEffect(() => {
-    let isMounted = true;
-    let channel: any = null;
-    let authSubscription: any = null;
-
-    const checkFavorite = async () => {
-      // Always check session directly, don't rely only on isLoggedIn prop
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const user = session?.user;
-        
-        if (!user) {
-          if (isMounted) setIsFavorite(false);
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from('favorites')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('movie_id', movie.id)
-          .maybeSingle(); // Use maybeSingle instead of single to avoid errors
-
-        if (error && error.code !== 'PGRST116') {
-          console.error('Error checking favorite:', error);
-          return;
-        }
-
-        if (isMounted) {
-          setIsFavorite(!!data);
-        }
-      } catch (error) {
-        console.error('Failed to check favorite:', error);
-        if (isMounted) setIsFavorite(false);
-      }
-    };
-
-    // Initial check
-    checkFavorite();
-
-    // Subscribe to auth state changes (for refresh scenarios)
-    authSubscription = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isMounted) {
-        if (session?.user) {
-          checkFavorite();
-        } else {
-          setIsFavorite(false);
-        }
-      }
-    });
-
-    // Subscribe to favorites changes for this movie and user
-    const setupSubscription = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      
-      if (!user) return;
-
-      channel = supabase
-        .channel(`favorites-${movie.id}-${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'favorites',
-            filter: `movie_id=eq.${movie.id}`,
-          },
-          () => {
-            // Re-check favorite status when changes occur
-            if (isMounted) {
-              checkFavorite();
-            }
-          }
-        )
-        .subscribe();
-    };
-
-    // Setup subscription after a short delay to ensure session is loaded
-    const timeoutId = setTimeout(() => {
-      setupSubscription();
-    }, 100);
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timeoutId);
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-      if (authSubscription?.data?.subscription) {
-        authSubscription.data.subscription.unsubscribe();
-      }
-    };
-  }, [movie.id]); // Remove isLoggedIn dependency, check session directly
+  const movieIsFavorite = isFavorite(movie.id);
 
   const handleAddToFavorites = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     if (!isLoggedIn || isAddingFavorite) {
       return;
     }
 
-    // Prevent double-click
-    if (isAddingFavorite) return;
-
     setIsAddingFavorite(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setIsAddingFavorite(false);
-        return;
-      }
-
-      if (isFavorite) {
-        const { error } = await supabase
-          .from('favorites')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('movie_id', movie.id);
-
-        if (error) throw error;
-        setIsFavorite(false);
-      } else {
-        // First check if it already exists
-        const { data: existing } = await supabase
-          .from('favorites')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('movie_id', movie.id)
-          .maybeSingle();
-
-        if (existing) {
-          // Already exists, just update state
-          setIsFavorite(true);
-        } else {
-          // Insert new favorite
-          const { data, error } = await supabase
-            .from('favorites')
-            .insert({
-              user_id: user.id,
-              movie_id: movie.id,
-              movie_title: movie.title,
-              movie_data: movie
-            })
-            .select(); // Return inserted data to verify
-
-          if (error) {
-            // If it's a unique constraint violation, check again
-            if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
-              // Race condition: another request inserted it, just update state
-              setIsFavorite(true);
-            } else {
-              console.error('Failed to insert favorite:', error);
-              throw error;
-            }
-          } else {
-            // Successfully inserted
-            if (data && data.length > 0) {
-              setIsFavorite(true);
-            } else {
-              console.warn('Insert returned no data');
-              // Verify it was actually inserted
-              const { data: verify } = await supabase
-                .from('favorites')
-                .select('id')
-                .eq('user_id', user.id)
-                .eq('movie_id', movie.id)
-                .maybeSingle();
-              
-              if (verify) {
-                setIsFavorite(true);
-              } else {
-                throw new Error('Failed to insert favorite - no data returned');
-              }
-            }
-          }
-        }
-      }
+      await toggleFavorite(movie.id, movieIsFavorite);
     } catch (error: any) {
       console.error('Failed to update favorite:', error);
-      // Don't show alert, just log the error
     } finally {
       setIsAddingFavorite(false);
     }
@@ -267,22 +100,22 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
       <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
         {/* Add to Favorites Button - Hidden if hideHeartButton is true */}
         {!hideHeartButton && (
-          <button 
+          <button
             className={`w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 bg-cyber-black/90 backdrop-blur-md border border-cyber-cyan/30 ${
-              isFavorite 
-                ? 'opacity-100 text-cyber-cyan bg-cyber-cyan/20 border-cyber-cyan/50 shadow-neon-cyan' 
+              movieIsFavorite
+                ? 'opacity-100 text-cyber-cyan bg-cyber-cyan/20 border-cyber-cyan/50 shadow-neon-cyan'
                 : 'opacity-0 group-hover:opacity-100 hover:text-cyber-cyan hover:border-cyber-cyan hover:bg-cyber-cyan/10 hover:shadow-neon-cyan/50'
             } ${isAddingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={handleAddToFavorites}
             disabled={isAddingFavorite || !isLoggedIn}
-            title={isLoggedIn ? (isFavorite ? 'Remove from favorites' : 'Add to favorites') : 'Login to add favorites'}
+            title={isLoggedIn ? (movieIsFavorite ? 'Remove from favorites' : 'Add to favorites') : 'Login to add favorites'}
           >
             {isAddingFavorite ? (
               <div className="w-4 h-4 border-2 border-cyber-cyan border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Heart 
-                size={18} 
-                className={isFavorite ? "fill-cyber-cyan text-cyber-cyan drop-shadow-[0_0_8px_rgba(0,243,255,0.8)]" : "group-hover:drop-shadow-[0_0_4px_rgba(0,243,255,0.6)]"}
+              <Heart
+                size={18}
+                className={movieIsFavorite ? "fill-cyber-cyan text-cyber-cyan drop-shadow-[0_0_8px_rgba(0,243,255,0.8)]" : "group-hover:drop-shadow-[0_0_4px_rgba(0,243,255,0.6)]"}
               />
             )}
           </button>

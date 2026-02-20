@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
 
 /**
@@ -8,21 +8,31 @@ import { supabase } from '../services/supabaseClient';
 export const useFavorites = (isLoggedIn: boolean) => {
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
+  const userIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn) {
       setFavoriteIds(new Set());
+      userIdRef.current = null;
       return;
     }
+
+    let isMounted = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
     const loadFavorites = async () => {
       setLoading(true);
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          setFavoriteIds(new Set());
+          if (isMounted) {
+            setFavoriteIds(new Set());
+            userIdRef.current = null;
+          }
           return;
         }
+
+        userIdRef.current = user.id;
 
         const { data, error } = await supabase
           .from('favorites')
@@ -31,44 +41,52 @@ export const useFavorites = (isLoggedIn: boolean) => {
 
         if (error) {
           console.error('Failed to load favorites:', error);
-          setFavoriteIds(new Set());
+          if (isMounted) setFavoriteIds(new Set());
           return;
         }
 
-        const ids = new Set(data?.map(item => item.movie_id) || []);
-        setFavoriteIds(ids);
+        if (isMounted) {
+          const ids = new Set(data?.map(item => item.movie_id) || []);
+          setFavoriteIds(ids);
+        }
       } catch (error) {
         console.error('Error loading favorites:', error);
-        setFavoriteIds(new Set());
+        if (isMounted) setFavoriteIds(new Set());
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
-    loadFavorites();
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !isMounted) return;
 
-    // Subscribe to favorites changes
-    const channel = supabase
-      .channel('favorites-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'favorites',
-          filter: `user_id=eq.${(async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            return user?.id || '';
-          })()}`,
-        },
-        () => {
-          loadFavorites();
-        }
-      )
-      .subscribe();
+      channel = supabase
+        .channel(`favorites-changes-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'favorites',
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            if (isMounted) loadFavorites();
+          }
+        )
+        .subscribe();
+    };
+
+    loadFavorites().then(() => {
+      if (isMounted) setupSubscription();
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      isMounted = false;
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [isLoggedIn]);
 

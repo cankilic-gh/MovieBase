@@ -133,11 +133,10 @@ const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose, onMovi
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {favorites.map((movie) => (
                       <div key={movie.id} className="relative group">
-                        <MovieCard 
-                          movie={movie} 
+                        <MovieCard
+                          movie={movie}
                           onClick={onMovieClick}
                           variant="standard"
-                          isLoggedIn={true}
                           hideHeartButton={true}
                         />
                         {/* Always visible heart button for favorites list */}
