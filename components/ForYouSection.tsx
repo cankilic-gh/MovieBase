@@ -36,17 +36,11 @@ const ForYouSection: React.FC<ForYouSectionProps> = ({ onMovieClick }) => {
 
   const [recommendations, setRecommendations] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
-  const [hasSignals, setHasSignals] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn || totalSignals === 0) {
       setRecommendations([]);
-      setHasSignals(null);
-      return;
-    }
-    if (totalSignals === 0) {
-      setHasSignals(false);
-      setRecommendations([]);
+      setLoading(false);
       return;
     }
 
@@ -80,7 +74,6 @@ const ForYouSection: React.FC<ForYouSectionProps> = ({ onMovieClick }) => {
         }
 
         if (!isMounted) return;
-        setHasSignals(sources.length > 0);
         if (sources.length === 0) {
           setRecommendations([]);
           setLoading(false);
@@ -138,7 +131,7 @@ const ForYouSection: React.FC<ForYouSectionProps> = ({ onMovieClick }) => {
   }, [isLoggedIn, totalSignals]);
 
   if (!isLoggedIn) return null;
-  if (hasSignals === false) return null;
+  if (totalSignals === 0) return null;
   if (!loading && recommendations.length === 0) return null;
 
   return (
