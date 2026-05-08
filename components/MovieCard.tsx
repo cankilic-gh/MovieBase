@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Heart } from 'lucide-react';
+import { Play, Heart, Bell, BellRing } from 'lucide-react';
 import { Movie } from '../types';
 import { getImageUrl, getBackdropUrl } from '../services/tmdbService';
 import { useFavorites } from '../hooks/useFavorites';
+import { useStreamingAlerts } from '../hooks/useStreamingAlerts';
 import { useAuth } from '../context/AuthContext';
 
 interface MovieCardProps {
@@ -16,9 +17,14 @@ interface MovieCardProps {
 const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standard', hideHeartButton = false }) => {
   const { isLoggedIn } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites(isLoggedIn);
+  const { hasAlert, toggleAlert } = useStreamingAlerts(isLoggedIn);
   const [isAddingFavorite, setIsAddingFavorite] = useState(false);
+  const [isTogglingAlert, setIsTogglingAlert] = useState(false);
 
   const movieIsFavorite = isFavorite(movie.id);
+  const movieHasAlert = hasAlert(movie.id);
+  const isUnavailable = !movie.platform || movie.platform === 'Theatre' || movie.platform === 'Rent/Buy';
+  const showAlertButton = isLoggedIn && isUnavailable && !hideHeartButton;
 
   const handleAddToFavorites = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -34,6 +40,19 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
       console.error('Failed to update favorite:', error);
     } finally {
       setIsAddingFavorite(false);
+    }
+  };
+
+  const handleToggleAlert = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isLoggedIn || isTogglingAlert) return;
+    setIsTogglingAlert(true);
+    try {
+      await toggleAlert(movie, movieHasAlert);
+    } catch (error: any) {
+      console.error('Failed to toggle alert:', error);
+    } finally {
+      setIsTogglingAlert(false);
     }
   };
 
@@ -111,6 +130,28 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
 
       {/* Top Right: Circular Score and Add Button */}
       <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
+        {/* Streaming Alert Button — only for non-subscription titles (N/A, Theatre, Rent/Buy) */}
+        {showAlertButton && (
+          <button
+            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 bg-cyber-black/90 backdrop-blur-md border border-cyber-cyan/30 ${
+              movieHasAlert
+                ? 'opacity-100 text-cyber-cyan bg-cyber-cyan/20 border-cyber-cyan/50 shadow-neon-cyan'
+                : 'opacity-0 group-hover:opacity-100 hover:text-cyber-cyan hover:border-cyber-cyan hover:bg-cyber-cyan/10 hover:shadow-neon-cyan/50'
+            } ${isTogglingAlert ? 'opacity-50 cursor-not-allowed' : ''}`}
+            onClick={handleToggleAlert}
+            disabled={isTogglingAlert}
+            title={movieHasAlert ? 'Stop notifying me when this hits streaming' : 'Notify me when this hits streaming'}
+          >
+            {isTogglingAlert ? (
+              <div className="w-4 h-4 border-2 border-cyber-cyan border-t-transparent rounded-full animate-spin" />
+            ) : movieHasAlert ? (
+              <BellRing size={18} className="fill-cyber-cyan text-cyber-cyan drop-shadow-[0_0_8px_rgba(0,243,255,0.8)]" />
+            ) : (
+              <Bell size={18} className="group-hover:drop-shadow-[0_0_4px_rgba(0,243,255,0.6)]" />
+            )}
+          </button>
+        )}
+
         {/* Add to Favorites Button - Hidden if hideHeartButton is true */}
         {!hideHeartButton && (
           <button
