@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Play, Heart } from 'lucide-react';
+import { X, Play, Heart, Bell, BellRing } from 'lucide-react';
 import { Movie } from '../types';
 import { getBackdropUrl, fetchTrailer } from '../services/tmdbService';
 import { useFavorites } from '../hooks/useFavorites';
+import { useStreamingAlerts } from '../hooks/useStreamingAlerts';
 import { useAuth } from '../context/AuthContext';
 
 const getPlatformColor = (platform?: string): string => {
@@ -45,12 +46,17 @@ interface MovieDetailModalProps {
 export const MovieDetailModal: React.FC<MovieDetailModalProps> = ({ movie, onClose }) => {
   const { isLoggedIn } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites(isLoggedIn);
+  const { hasAlert, toggleAlert } = useStreamingAlerts(isLoggedIn);
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [isLoadingTrailer, setIsLoadingTrailer] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
   const [isAddingFavorite, setIsAddingFavorite] = useState(false);
+  const [isTogglingAlert, setIsTogglingAlert] = useState(false);
 
   const movieIsFavorite = isFavorite(movie.id);
+  const movieHasAlert = hasAlert(movie.id);
+  const isUnavailable = !movie.platform || movie.platform === 'Theatre' || movie.platform === 'Rent/Buy';
+  const showAlertButton = isLoggedIn && isUnavailable;
 
   useEffect(() => {
     const loadTrailer = async () => {
@@ -80,6 +86,24 @@ export const MovieDetailModal: React.FC<MovieDetailModalProps> = ({ movie, onClo
       alert(error.message || 'Failed to update favorite');
     } finally {
       setIsAddingFavorite(false);
+    }
+  };
+
+  const handleToggleAlert = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isLoggedIn) {
+      alert('Please login to track streaming notifications');
+      return;
+    }
+    if (isTogglingAlert) return;
+    setIsTogglingAlert(true);
+    try {
+      await toggleAlert(movie, movieHasAlert);
+    } catch (error: any) {
+      console.error('Failed to toggle alert:', error);
+      alert(error.message || 'Failed to update notification');
+    } finally {
+      setIsTogglingAlert(false);
     }
   };
 
@@ -162,25 +186,47 @@ export const MovieDetailModal: React.FC<MovieDetailModalProps> = ({ movie, onClo
 
           <div className="flex items-start justify-between mb-4">
             <h2 className="text-3xl font-mono font-bold text-white leading-none flex-1 pr-4">{movie.title}</h2>
-            <button
-              onClick={handleAddToFavorites}
-              disabled={isAddingFavorite || !isLoggedIn}
-              className={`w-10 h-10 flex items-center justify-center rounded transition-colors flex-shrink-0 ${
-                movieIsFavorite
-                  ? 'text-cyber-cyan bg-cyber-cyan/10'
-                  : 'hover:text-cyber-cyan bg-white/5'
-              } ${isAddingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
-              title={isLoggedIn ? (movieIsFavorite ? 'Remove from favorites' : 'Add to favorites') : 'Login to add favorites'}
-            >
-              {isAddingFavorite ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Heart
-                  size={20}
-                  className={movieIsFavorite ? "fill-cyber-cyan text-cyber-cyan" : ""}
-                />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {showAlertButton && (
+                <button
+                  onClick={handleToggleAlert}
+                  disabled={isTogglingAlert}
+                  className={`w-10 h-10 flex items-center justify-center rounded transition-colors ${
+                    movieHasAlert
+                      ? 'text-cyber-cyan bg-cyber-cyan/10'
+                      : 'hover:text-cyber-cyan bg-white/5'
+                  } ${isTogglingAlert ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={movieHasAlert ? 'Stop notifying me when this hits streaming' : 'Notify me when this hits streaming'}
+                >
+                  {isTogglingAlert ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : movieHasAlert ? (
+                    <BellRing size={20} className="fill-cyber-cyan text-cyber-cyan" />
+                  ) : (
+                    <Bell size={20} />
+                  )}
+                </button>
               )}
-            </button>
+              <button
+                onClick={handleAddToFavorites}
+                disabled={isAddingFavorite || !isLoggedIn}
+                className={`w-10 h-10 flex items-center justify-center rounded transition-colors ${
+                  movieIsFavorite
+                    ? 'text-cyber-cyan bg-cyber-cyan/10'
+                    : 'hover:text-cyber-cyan bg-white/5'
+                } ${isAddingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title={isLoggedIn ? (movieIsFavorite ? 'Remove from favorites' : 'Add to favorites') : 'Login to add favorites'}
+              >
+                {isAddingFavorite ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Heart
+                    size={20}
+                    className={movieIsFavorite ? "fill-cyber-cyan text-cyber-cyan" : ""}
+                  />
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-4 mb-6">
