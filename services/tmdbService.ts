@@ -98,26 +98,41 @@ const fetchWatchProvider = async (
       return null;
     }
 
-    // Prefer flatrate (subscription) providers, then rent, then buy
-    const providers = regionData.flatrate || regionData.rent || regionData.buy || [];
+    // Only flatrate (subscription), free, and ads buckets count as a real
+    // streaming-platform badge. rent/buy are transactional and must NOT be
+    // labeled with a subscription platform name.
+    const subscriptionProviders =
+      regionData.flatrate || regionData.free || regionData.ads || [];
 
-    if (providers.length === 0) {
-      // No providers - check if in theatres
-      if (mediaType === 'movie' && isInTheatres(releaseDate)) {
-        providerCache.set(cacheKey, 'Theatre');
-        return 'Theatre';
-      }
-      providerCache.set(cacheKey, null);
-      return null;
+    if (subscriptionProviders.length > 0) {
+      // Get the first provider (usually the most popular / display priority)
+      const providerId = subscriptionProviders[0].provider_id;
+      const platformName =
+        PROVIDER_MAP[providerId] || subscriptionProviders[0].provider_name || null;
+
+      providerCache.set(cacheKey, platformName);
+      return platformName;
     }
 
-    // Get the first provider (usually the most popular)
-    const providerId = providers[0].provider_id;
-    const platformName = PROVIDER_MAP[providerId] || providers[0].provider_name || null;
+    // Transactional only (rent/buy): mark explicitly so the UI can render a
+    // neutral "RENT/BUY" badge instead of impersonating a subscription.
+    const hasTransactional =
+      (regionData.rent && regionData.rent.length > 0) ||
+      (regionData.buy && regionData.buy.length > 0);
 
-    // Cache the result
-    providerCache.set(cacheKey, platformName);
-    return platformName;
+    if (hasTransactional) {
+      providerCache.set(cacheKey, 'Rent/Buy');
+      return 'Rent/Buy';
+    }
+
+    // No providers in any bucket - check if in theatres
+    if (mediaType === 'movie' && isInTheatres(releaseDate)) {
+      providerCache.set(cacheKey, 'Theatre');
+      return 'Theatre';
+    }
+
+    providerCache.set(cacheKey, null);
+    return null;
   } catch (error) {
     console.error(`Failed to fetch watch provider for ${mediaType} ${movieId}:`, error);
     // On error, check if in theatres
@@ -221,15 +236,16 @@ export const fetchMovies = async (page: number, type: MediaType = 'all', genreId
           media_type: item.media_type,
         }));
         
-        // Fetch watch providers for the first page only (to avoid excessive API calls)
-        if (page === 1 && normalizedResults.length > 0) {
+        // Fetch watch providers for every page so cards never fall back to N/A on scroll.
+        // Cache + 10-concurrent batching keeps TMDB rate-limit pressure bounded.
+        if (normalizedResults.length > 0) {
           const providerMap = await fetchWatchProvidersBatch(normalizedResults);
           return normalizedResults.map(movie => ({
             ...movie,
             platform: (providerMap.get(movie.id) as any) || undefined
           }));
         }
-        
+
         return normalizedResults;
       } else {
       endpoint = `/trending/all/week?language=en-US&page=${page}`;
@@ -275,8 +291,9 @@ export const fetchMovies = async (page: number, type: MediaType = 'all', genreId
         media_type: item.media_type || (type === 'tv' ? 'tv' : 'movie'), // Discover endpoints don't return media_type
     }));
     
-    // Fetch watch providers for the first page only (to avoid excessive API calls)
-    if (page === 1 && normalizedResults.length > 0) {
+    // Fetch watch providers for every page so cards never fall back to N/A on scroll.
+    // Cache + 10-concurrent batching keeps TMDB rate-limit pressure bounded.
+    if (normalizedResults.length > 0) {
       const providerMap = await fetchWatchProvidersBatch(normalizedResults);
       return normalizedResults.map(movie => ({
         ...movie,

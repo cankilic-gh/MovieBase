@@ -105,10 +105,11 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
                 let gridClass = "col-span-1";
                 let cardVariant: 'standard' | 'featured' | 'large' = 'standard';
 
-                // Apply special layout only for the first page of "Trending" (no search)
-                const isFirstPageDefault = !searchQuery && page === 1;
+                // Apply bento layout to the first 6 cards of "Trending" (no search).
+                // Independent of current page so the layout survives infinite-scroll re-renders.
+                const useBentoLayout = !searchQuery;
 
-                if (isFirstPageDefault) {
+                if (useBentoLayout) {
                      if (index === 0) {
                         // 1. Hero Card (Top)
                         gridClass = "col-span-2 md:col-span-4 h-[50vh] md:h-[600px]"; 

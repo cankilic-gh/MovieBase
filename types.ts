@@ -8,7 +8,12 @@ export interface Movie {
   release_date: string;
   genre_ids: number[];
   media_type?: 'movie' | 'tv';
-  platform?: string; // Real platform name from TMDB watch providers API
+  // Real subscription platform name from TMDB watch providers API
+  // (e.g. 'Netflix', 'Prime Video'), or sentinel values:
+  //   'Rent/Buy' -> only available transactionally (rent or buy)
+  //   'Theatre'  -> released within last 60 days, no streaming yet
+  // undefined -> no availability info known
+  platform?: string;
 }
 
 export interface Genre {

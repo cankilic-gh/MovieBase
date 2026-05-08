@@ -41,11 +41,16 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
   const scoreColor = movie.vote_average >= 7.5 ? '#DC143C' : movie.vote_average >= 5 ? '#0066FF' : '#FF4D00';
   
   const getPlatformColor = (p?: string) => {
-    if (!p) return 'text-white';
-    
+    // Subdued color for unknown / transactional-only availability
+    if (!p) return 'text-gray-400';
+
+    // Sentinel states from tmdbService — never mapped to a streaming brand color
+    if (p === 'Rent/Buy') return 'text-gray-400';
+    if (p === 'Theatre') return 'text-cyber-orange';
+
     // Normalize platform name for comparison
     const platformLower = p.toLowerCase();
-    
+
     if (platformLower.includes('netflix')) return 'text-red-600';
     if (platformLower.includes('prime')) return 'text-blue-400';
     if (platformLower.includes('disney')) return 'text-blue-500';
@@ -56,8 +61,16 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
     if (platformLower.includes('showtime')) return 'text-red-500';
     if (platformLower.includes('starz')) return 'text-purple-400';
     if (platformLower.includes('crunchyroll')) return 'text-orange-500';
-    
+
     return 'text-cyber-cyan';
+  };
+
+  // Display label for the platform badge — handles sentinel states cleanly.
+  const getPlatformLabel = (p?: string): string => {
+    if (!p) return 'N/A';
+    if (p === 'Rent/Buy') return 'RENT/BUY';
+    if (p === 'Theatre') return 'THEATRE';
+    return p;
   };
 
   // Determine Image Source and Style based on Variant
@@ -164,7 +177,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
         {/* Platform Badge with Neon Styling */}
         <div className="flex items-center gap-2 mb-2">
             <span className={`px-2 py-1 rounded-sm bg-cyber-black/80 backdrop-blur border border-cyber-cyan/30 text-xs font-bold font-mono uppercase tracking-wider ${getPlatformColor(movie.platform)} group-hover:border-cyber-cyan/50 transition-all duration-300`}>
-                {movie.platform || 'N/A'}
+                {getPlatformLabel(movie.platform)}
             </span>
             {isFeatured && (
                 <span className="px-2 py-1 rounded-sm bg-cyber-purple/30 border border-cyber-purple/50 text-cyber-purple text-xs font-mono font-black uppercase tracking-wider animate-pulse-neon shadow-neon-purple/50">

@@ -7,7 +7,12 @@ import { useFavorites } from '../hooks/useFavorites';
 import { useAuth } from '../context/AuthContext';
 
 const getPlatformColor = (platform?: string): string => {
-  if (!platform) return 'text-blue-400 border-blue-400/50';
+  // Subdued color for unknown availability — neutral, not "streaming"
+  if (!platform) return 'text-gray-400 border-gray-400/40';
+
+  // Sentinel states from tmdbService — never mapped to a streaming brand color
+  if (platform === 'Rent/Buy') return 'text-gray-400 border-gray-400/40';
+  if (platform === 'Theatre') return 'text-cyber-orange border-cyber-orange/50';
 
   const platformLower = platform.toLowerCase();
 
@@ -22,6 +27,14 @@ const getPlatformColor = (platform?: string): string => {
   if (platformLower.includes('starz')) return 'text-purple-400 border-purple-400/50';
 
   return 'text-cyber-cyan border-cyber-cyan/50';
+};
+
+// Display label for the platform badge — handles sentinel states cleanly.
+const getPlatformLabel = (platform?: string): string => {
+  if (!platform) return 'N/A';
+  if (platform === 'Rent/Buy') return 'RENT/BUY';
+  if (platform === 'Theatre') return 'THEATRE';
+  return platform;
 };
 
 interface MovieDetailModalProps {
@@ -142,7 +155,7 @@ export const MovieDetailModal: React.FC<MovieDetailModalProps> = ({ movie, onClo
         <div className="w-full md:w-1/3 p-8 overflow-y-auto">
           <div className="flex items-center gap-2 mb-4">
             <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${getPlatformColor(movie.platform)}`}>
-              {movie.platform || 'STREAMING'}
+              {getPlatformLabel(movie.platform)}
             </span>
             <span className="text-gray-400 text-xs font-mono">{movie.release_date}</span>
           </div>
