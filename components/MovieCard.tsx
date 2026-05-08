@@ -35,7 +35,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
 
     setIsAddingFavorite(true);
     try {
-      await toggleFavorite(movie.id, movieIsFavorite);
+      await toggleFavorite(movie, movieIsFavorite);
     } catch (error: any) {
       console.error('Failed to update favorite:', error);
     } finally {
@@ -133,10 +133,10 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
         {/* Streaming Alert Button — only for non-subscription titles (N/A, Theatre, Rent/Buy) */}
         {showAlertButton && (
           <button
-            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 bg-cyber-black/90 backdrop-blur-md border border-cyber-cyan/30 ${
+            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 bg-cyber-black/90 backdrop-blur-md border ${
               movieHasAlert
-                ? 'opacity-100 text-cyber-cyan bg-cyber-cyan/20 border-cyber-cyan/50 shadow-neon-cyan'
-                : 'opacity-0 group-hover:opacity-100 hover:text-cyber-cyan hover:border-cyber-cyan hover:bg-cyber-cyan/10 hover:shadow-neon-cyan/50'
+                ? 'text-cyber-cyan bg-cyber-cyan/20 border-cyber-cyan/50 shadow-neon-cyan'
+                : 'border-cyber-cyan/30 text-gray-300 hover:text-cyber-cyan hover:border-cyber-cyan hover:bg-cyber-cyan/10 hover:shadow-neon-cyan/50'
             } ${isTogglingAlert ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={handleToggleAlert}
             disabled={isTogglingAlert}
@@ -155,10 +155,10 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
         {/* Add to Favorites Button - Hidden if hideHeartButton is true */}
         {!hideHeartButton && (
           <button
-            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 bg-cyber-black/90 backdrop-blur-md border border-cyber-cyan/30 ${
+            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 bg-cyber-black/90 backdrop-blur-md border ${
               movieIsFavorite
-                ? 'opacity-100 text-cyber-cyan bg-cyber-cyan/20 border-cyber-cyan/50 shadow-neon-cyan'
-                : 'opacity-0 group-hover:opacity-100 hover:text-cyber-cyan hover:border-cyber-cyan hover:bg-cyber-cyan/10 hover:shadow-neon-cyan/50'
+                ? 'text-cyber-cyan bg-cyber-cyan/20 border-cyber-cyan/50 shadow-neon-cyan'
+                : 'border-cyber-cyan/30 text-gray-300 hover:text-cyber-cyan hover:border-cyber-cyan hover:bg-cyber-cyan/10 hover:shadow-neon-cyan/50'
             } ${isAddingFavorite ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={handleAddToFavorites}
             disabled={isAddingFavorite || !isLoggedIn}

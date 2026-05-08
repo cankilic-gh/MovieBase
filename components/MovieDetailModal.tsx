@@ -80,7 +80,7 @@ export const MovieDetailModal: React.FC<MovieDetailModalProps> = ({ movie, onClo
 
     setIsAddingFavorite(true);
     try {
-      await toggleFavorite(movie.id, movieIsFavorite);
+      await toggleFavorite(movie, movieIsFavorite);
     } catch (error: any) {
       console.error('Failed to update favorite:', error);
       alert(error.message || 'Failed to update favorite');

@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import InfiniteScrollGrid from './components/InfiniteScrollGrid';
+import ForYouSection from './components/ForYouSection';
 import LoginModal from './components/LoginModal';
 import FavoritesModal from './components/FavoritesModal';
 import MovieDetailModal from './components/MovieDetailModal';
@@ -112,6 +113,9 @@ const AppContent: React.FC = () => {
                     onCategoryFilter={handleCategoryFilter}
                     activeCategory={activeCategory}
                 />
+                {isLoggedIn && !searchQuery && !genreId && (
+                  <ForYouSection onMovieClick={setSelectedMovie} />
+                )}
                 <InfiniteScrollGrid
                     onMovieClick={setSelectedMovie}
                     searchQuery={searchQuery}

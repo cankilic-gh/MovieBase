@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
+import { Movie } from '../types';
 
 /**
  * Hook to fetch and manage user favorites
@@ -90,37 +91,36 @@ export const useFavorites = (isLoggedIn: boolean) => {
     };
   }, [isLoggedIn]);
 
-  const toggleFavorite = async (movieId: number, isFavorite: boolean): Promise<boolean> => {
+  const toggleFavorite = async (movie: Movie, isFavorite: boolean): Promise<boolean> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
       if (isFavorite) {
-        // Remove
         const { error } = await supabase
           .from('favorites')
           .delete()
           .eq('user_id', user.id)
-          .eq('movie_id', movieId);
+          .eq('movie_id', movie.id);
 
         if (error) throw error;
         setFavoriteIds(prev => {
           const next = new Set(prev);
-          next.delete(movieId);
+          next.delete(movie.id);
           return next;
         });
         return false;
       } else {
-        // Add - we need movie data
         const { error } = await supabase
           .from('favorites')
           .insert({
             user_id: user.id,
-            movie_id: movieId,
+            movie_id: movie.id,
+            movie_data: movie,
           });
 
         if (error) throw error;
-        setFavoriteIds(prev => new Set(prev).add(movieId));
+        setFavoriteIds(prev => new Set(prev).add(movie.id));
         return true;
       }
     } catch (error) {
