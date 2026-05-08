@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { Movie } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useFavorites } from '../hooks/useFavorites';
+import { useStreamingAlerts } from '../hooks/useStreamingAlerts';
 import { supabase } from '../services/supabaseClient';
 import MovieCard from './MovieCard';
 
@@ -28,6 +30,10 @@ const shuffle = <T,>(arr: T[]): T[] => {
 
 const ForYouSection: React.FC<ForYouSectionProps> = ({ onMovieClick }) => {
   const { isLoggedIn } = useAuth();
+  const { favoriteIds } = useFavorites(isLoggedIn);
+  const { alertIds } = useStreamingAlerts(isLoggedIn);
+  const totalSignals = favoriteIds.size + alertIds.size;
+
   const [recommendations, setRecommendations] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSignals, setHasSignals] = useState<boolean | null>(null);
@@ -36,6 +42,11 @@ const ForYouSection: React.FC<ForYouSectionProps> = ({ onMovieClick }) => {
     if (!isLoggedIn) {
       setRecommendations([]);
       setHasSignals(null);
+      return;
+    }
+    if (totalSignals === 0) {
+      setHasSignals(false);
+      setRecommendations([]);
       return;
     }
 
@@ -124,7 +135,7 @@ const ForYouSection: React.FC<ForYouSectionProps> = ({ onMovieClick }) => {
 
     load();
     return () => { isMounted = false; };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, totalSignals]);
 
   if (!isLoggedIn) return null;
   if (hasSignals === false) return null;
