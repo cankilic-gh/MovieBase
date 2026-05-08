@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface HeroSectionProps {
@@ -8,9 +8,21 @@ interface HeroSectionProps {
   onClearSearch?: () => void;
   onCategoryFilter?: (category: string | null) => void;
   activeCategory?: string | null;
+  forYouAvailable?: boolean;
+  forYouActive?: boolean;
+  onForYouToggle?: () => void;
 }
 
-const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClearSearch, onCategoryFilter, activeCategory }) => {
+const HeroSection: React.FC<HeroSectionProps> = ({
+  onSearch,
+  searchQuery,
+  onClearSearch,
+  onCategoryFilter,
+  activeCategory,
+  forYouAvailable = false,
+  forYouActive = false,
+  onForYouToggle,
+}) => {
   const [query, setQuery] = useState('');
   const [strokeWidth, setStrokeWidth] = useState('2px');
 
@@ -192,7 +204,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClea
             className="mt-8 flex flex-wrap justify-center gap-3"
         >
             {['All', 'Action', 'Comedy', 'Drama', 'Horror', 'Romance', 'Adventure', 'Kids'].map((tag, index) => {
-                const isActive = tag === 'All' ? !activeCategory : activeCategory === tag;
+                const isActive = tag === 'All' ? !activeCategory && !forYouActive : activeCategory === tag;
                 return (
                     <motion.span
                         key={tag}
@@ -218,6 +230,31 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch, searchQuery, onClea
                     </motion.span>
                 );
             })}
+            {forYouAvailable && onForYouToggle && (
+                <motion.span
+                    onClick={onForYouToggle}
+                    className={`px-3 py-1 rounded-sm border text-xs font-mono uppercase font-bold cursor-pointer transition-all duration-300 inline-flex items-center gap-1.5 ${
+                        forYouActive
+                            ? 'border-cyber-purple bg-cyber-purple/30 text-cyber-purple shadow-neon-purple'
+                            : 'border-cyber-purple/40 text-cyber-purple/80'
+                    }`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 + 8 * 0.05, duration: 0.3 }}
+                    whileHover={{
+                        scale: 1.1,
+                        y: -3,
+                        backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                        borderColor: 'rgba(168, 85, 247, 0.6)',
+                        boxShadow: '0 0 20px rgba(168, 85, 247, 0.4)'
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                    title="Recommendations based on your favorites and notifications"
+                >
+                    <Sparkles size={12} />
+                    For You
+                </motion.span>
+            )}
         </motion.div>
       </div>
     </div>

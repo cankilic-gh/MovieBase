@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
@@ -10,6 +10,8 @@ import MovieDetailModal from './components/MovieDetailModal';
 import { Movie, MediaType } from './types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { useFavorites } from './hooks/useFavorites';
+import { useStreamingAlerts } from './hooks/useStreamingAlerts';
 
 // Genre mapping: Category name -> TMDB Genre ID
 const GENRE_MAP: Record<string, number> = {
@@ -24,12 +26,21 @@ const GENRE_MAP: Record<string, number> = {
 
 const AppContent: React.FC = () => {
   const { isLoggedIn, checkSession } = useAuth();
+  const { favoriteIds } = useFavorites(isLoggedIn);
+  const { alertIds } = useStreamingAlerts(isLoggedIn);
   const [activeFilter, setActiveFilter] = useState<MediaType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [forYouActive, setForYouActive] = useState(false);
+
+  const forYouAvailable = isLoggedIn && (favoriteIds.size + alertIds.size) > 0;
+
+  useEffect(() => {
+    if (!forYouAvailable && forYouActive) setForYouActive(false);
+  }, [forYouAvailable, forYouActive]);
 
   const handleLogin = async () => {
     await checkSession();
@@ -38,19 +49,34 @@ const AppContent: React.FC = () => {
 
   const handleSearch = (q: string) => {
     setSearchQuery(q);
-    // Reset to 'all' if searching to search everything
-    if(q) setActiveFilter('all');
+    if (q) {
+      setActiveFilter('all');
+      setForYouActive(false);
+    }
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
     setActiveFilter('all');
     setActiveCategory(null);
+    setForYouActive(false);
   };
 
   const handleCategoryFilter = (category: string | null) => {
     setActiveCategory(category);
-    setSearchQuery(''); // Clear search when filtering by category
+    setSearchQuery('');
+    setForYouActive(false);
+  };
+
+  const handleForYouToggle = () => {
+    setForYouActive((on) => {
+      const next = !on;
+      if (next) {
+        setSearchQuery('');
+        setActiveCategory(null);
+      }
+      return next;
+    });
   };
 
   const genreId = activeCategory ? GENRE_MAP[activeCategory] : undefined;
@@ -112,17 +138,21 @@ const AppContent: React.FC = () => {
                     onClearSearch={handleClearSearch}
                     onCategoryFilter={handleCategoryFilter}
                     activeCategory={activeCategory}
+                    forYouAvailable={forYouAvailable}
+                    forYouActive={forYouActive}
+                    onForYouToggle={handleForYouToggle}
                 />
-                {isLoggedIn && !searchQuery && !genreId && (
+                {forYouActive ? (
                   <ForYouSection onMovieClick={setSelectedMovie} />
+                ) : (
+                  <InfiniteScrollGrid
+                      onMovieClick={setSelectedMovie}
+                      searchQuery={searchQuery}
+                      filterType={activeFilter}
+                      onClearSearch={handleClearSearch}
+                      genreId={genreId}
+                  />
                 )}
-                <InfiniteScrollGrid
-                    onMovieClick={setSelectedMovie}
-                    searchQuery={searchQuery}
-                    filterType={activeFilter}
-                    onClearSearch={handleClearSearch}
-                    genreId={genreId}
-                />
               </>
             } />
           </Routes>
