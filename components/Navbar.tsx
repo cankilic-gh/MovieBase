@@ -111,9 +111,10 @@ const Navbar: React.FC<NavbarProps> = ({ onFilterChange, activeFilter, onOpenLog
           
           {isLoggedIn && user ? (
             <div className="relative group">
-              <button 
+              <button
                 className="flex items-center justify-center w-9 h-9 rounded-full bg-cyber-cyan/20 border border-cyber-cyan/50 hover:border-cyber-cyan hover:bg-cyber-cyan/30 transition-all shadow-neon-cyan hover:shadow-neon-cyan hover:scale-110"
                 title={user.email || 'User'}
+                aria-label="Account menu"
               >
                 <span className="text-cyber-cyan text-xs font-mono font-black drop-shadow-[0_0_4px_rgba(0,243,255,0.8)]">
                   {getUserInitials(user)}
@@ -137,8 +138,9 @@ const Navbar: React.FC<NavbarProps> = ({ onFilterChange, activeFilter, onOpenLog
               </div>
             </div>
           ) : (
-          <button 
+          <button
             onClick={onOpenLogin}
+            aria-label="Sign in"
             className="flex items-center justify-center w-9 h-9 rounded-full bg-cyber-black/60 border border-cyber-cyan/30 hover:border-cyber-cyan hover:bg-cyber-cyan/20 transition-all duration-300 shadow-neon-cyan/50 hover:shadow-neon-cyan hover:scale-110"
           >
               <User size={18} className="text-cyber-cyan drop-shadow-[0_0_4px_rgba(0,243,255,0.6)]" />

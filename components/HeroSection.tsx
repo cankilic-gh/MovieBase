@@ -190,7 +190,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
                         <X size={18} className="drop-shadow-[0_0_4px_rgba(0,243,255,0.5)]" />
                     </button>
                 )}
-                <button type="button" className="p-3 text-gray-400 hover:text-cyber-cyan hover:bg-cyber-cyan/10 rounded-full transition-all duration-300">
+                <button type="button" aria-label="Search filters" className="p-3 text-gray-400 hover:text-cyber-cyan hover:bg-cyber-cyan/10 rounded-full transition-all duration-300">
                     <SlidersHorizontal size={20} className="drop-shadow-[0_0_4px_rgba(0,243,255,0.5)]" />
                 </button>
             </div>
