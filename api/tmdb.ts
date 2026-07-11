@@ -8,6 +8,11 @@
 // Uses the Web-standard Request/Response signature so it type-checks with the
 // DOM lib already configured (no @vercel/node dependency required).
 
+// Run on Vercel's Edge runtime so the Web-standard Request/Response signature
+// below is the actual invocation contract (the default Node runtime would
+// expect an (req, res) handler instead).
+export const config = { runtime: 'edge' };
+
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
 // Only allow read-only TMDB endpoints the app actually uses. Anything else is
