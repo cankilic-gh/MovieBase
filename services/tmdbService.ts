@@ -1,10 +1,10 @@
-import { Movie, ApiResponse, MediaType } from '../types';
+import { Movie, ApiResponse, MediaType, WatchProvider } from '../types';
+import { tmdbFetch } from './tmdbClient';
 
-const ACCESS_TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN || '';
-
-const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/original';
+// Small square logos for provider chips.
+const PROVIDER_LOGO_BASE_URL = 'https://image.tmdb.org/t/p/w92';
 
 // Default watch region (can be changed to 'TR' for Turkey, 'US' for United States, etc.)
 const DEFAULT_WATCH_REGION = 'US';
@@ -35,122 +35,198 @@ const PROVIDER_MAP: Record<number, string> = {
   584: 'Discovery+',
 };
 
-export const getImageUrl = (path: string | null) => 
+export const getImageUrl = (path: string | null) =>
   path ? `${IMAGE_BASE_URL}${path}` : 'https://placehold.co/500x750/1a0b0b/DC143C?text=NO+IMAGE';
 
 export const getBackdropUrl = (path: string | null) =>
   path ? `${BACKDROP_BASE_URL}${path}` : 'https://placehold.co/1920x1080/1a0b0b/DC143C?text=NO+SIGNAL';
 
-// Cache for watch providers to avoid excessive API calls
-const providerCache = new Map<string, string | null>();
+// Provider logo (small square). Returns null when there's no logo so the UI can
+// fall back to the text badge.
+export const getProviderLogoUrl = (logoPath: string | null): string | null =>
+  logoPath ? `${PROVIDER_LOGO_BASE_URL}${logoPath}` : null;
 
-// Check if a movie is currently in theatres (released within last 60 days, no streaming yet)
-const isInTheatres = (releaseDate: string | undefined): boolean => {
+// Result of resolving a title's availability: the primary sentinel/name (kept
+// backward compatible) plus the full ordered provider list.
+interface ProviderResolution {
+  platform: string | null;
+  platforms: WatchProvider[];
+}
+
+// Cache for watch providers to avoid excessive API calls. Keyed by
+// mediaType-id-region; stores the full resolution.
+const providerCache = new Map<string, ProviderResolution>();
+
+// Cache of the current theatrical release id set per region (from now_playing).
+// Populated lazily and reused so the 'Theatre' sentinel is accurate.
+const nowPlayingIdCache = new Map<string, Set<number>>();
+
+// Days-since-release window used as a fallback theatre heuristic when the
+// now_playing set can't confirm a title.
+const THEATRE_WINDOW_DAYS = 45;
+
+// Check if a movie is currently in theatres. A movie counts as "in theatres"
+// if it appears in the cached now_playing id set for the region, OR it was
+// released within the last THEATRE_WINDOW_DAYS.
+const isInTheatres = (
+  releaseDate: string | undefined,
+  movieId?: number,
+  region: string = DEFAULT_WATCH_REGION,
+): boolean => {
+  if (movieId !== undefined) {
+    const set = nowPlayingIdCache.get(region);
+    if (set && set.has(movieId)) return true;
+  }
+
   if (!releaseDate || releaseDate === 'TBA') return false;
 
   const release = new Date(releaseDate);
   const now = new Date();
   const daysSinceRelease = (now.getTime() - release.getTime()) / (1000 * 60 * 60 * 24);
 
-  // Movie is in theatres if released within last 60 days
-  return daysSinceRelease >= 0 && daysSinceRelease <= 60;
+  return daysSinceRelease >= 0 && daysSinceRelease <= THEATRE_WINDOW_DAYS;
 };
 
-// Fetch watch provider for a single movie/TV show
+// Fetch (and cache) the set of movie ids currently in theatres for a region.
+// Pure/idempotent per region: subsequent calls reuse the cached set.
+export const ensureNowPlayingSet = async (
+  region: string = DEFAULT_WATCH_REGION,
+): Promise<Set<number>> => {
+  const cached = nowPlayingIdCache.get(region);
+  if (cached) return cached;
+
+  const ids = new Set<number>();
+  try {
+    // First two pages give a solid current-theatrical picture.
+    for (let page = 1; page <= 2; page++) {
+      const res = await tmdbFetch('/movie/now_playing', {
+        language: 'en-US',
+        page,
+        region,
+      });
+      if (!res.ok) break;
+      const data = await res.json();
+      for (const item of data.results ?? []) {
+        if (typeof item.id === 'number') ids.add(item.id);
+      }
+      if (!data.total_pages || page >= data.total_pages) break;
+    }
+  } catch (err) {
+    console.error('Failed to fetch now_playing set', err);
+  }
+
+  nowPlayingIdCache.set(region, ids);
+  return ids;
+};
+
+// Map a raw TMDB provider entry to our WatchProvider shape, applying the
+// friendly PROVIDER_MAP name where we have one.
+const toWatchProvider = (
+  raw: any,
+  kind: WatchProvider['kinds'][number],
+): WatchProvider => ({
+  name: PROVIDER_MAP[raw.provider_id] || raw.provider_name || 'Unknown',
+  logoPath: raw.logo_path ?? null,
+  kinds: [kind],
+});
+
+// Dedupe providers by name across buckets, merging their kinds. Subscription
+// buckets are processed first so subscription-first ordering is preserved.
+const dedupeProviders = (list: WatchProvider[]): WatchProvider[] => {
+  const byName = new Map<string, WatchProvider>();
+  for (const p of list) {
+    const existing = byName.get(p.name);
+    if (existing) {
+      for (const k of p.kinds) {
+        if (!existing.kinds.includes(k)) existing.kinds.push(k);
+      }
+      if (!existing.logoPath && p.logoPath) existing.logoPath = p.logoPath;
+    } else {
+      byName.set(p.name, { ...p, kinds: [...p.kinds] });
+    }
+  }
+  return Array.from(byName.values());
+};
+
+const theatreResolution: ProviderResolution = { platform: 'Theatre', platforms: [] };
+const rentBuyResolution = (platforms: WatchProvider[]): ProviderResolution => ({
+  platform: 'Rent/Buy',
+  platforms,
+});
+const emptyResolution: ProviderResolution = { platform: null, platforms: [] };
+
+// Fetch watch providers for a single movie/TV show, returning the primary
+// sentinel/name (backward compatible) plus the full ordered provider list.
 const fetchWatchProvider = async (
   movieId: number,
   mediaType: 'movie' | 'tv' = 'movie',
   region: string = DEFAULT_WATCH_REGION,
   releaseDate?: string
-): Promise<string | null> => {
+): Promise<ProviderResolution> => {
   const cacheKey = `${mediaType}-${movieId}-${region}`;
 
-  // Check cache first
-  if (providerCache.has(cacheKey)) {
-    return providerCache.get(cacheKey) || null;
-  }
+  const cached = providerCache.get(cacheKey);
+  if (cached) return cached;
+
+  const theatreFallback = (): ProviderResolution => {
+    if (mediaType === 'movie' && isInTheatres(releaseDate, movieId, region)) {
+      providerCache.set(cacheKey, theatreResolution);
+      return theatreResolution;
+    }
+    providerCache.set(cacheKey, emptyResolution);
+    return emptyResolution;
+  };
 
   try {
-    const endpoint = `/${mediaType}/${movieId}/watch/providers`;
-    const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
-
-    if (!res.ok) {
-      // For movies, check if it's in theatres
-      if (mediaType === 'movie' && isInTheatres(releaseDate)) {
-        providerCache.set(cacheKey, 'Theatre');
-        return 'Theatre';
-      }
-      providerCache.set(cacheKey, null);
-      return null;
-    }
+    const res = await tmdbFetch(`/${mediaType}/${movieId}/watch/providers`, { region });
+    if (!res.ok) return theatreFallback();
 
     const data = await res.json();
-
-    // Get providers for the specified region
     const regionData = data.results?.[region];
-    if (!regionData) {
-      // No streaming in this region - check if in theatres
-      if (mediaType === 'movie' && isInTheatres(releaseDate)) {
-        providerCache.set(cacheKey, 'Theatre');
-        return 'Theatre';
-      }
-      providerCache.set(cacheKey, null);
-      return null;
+    if (!regionData) return theatreFallback();
+
+    // Subscription-style buckets first (real streaming badge), then transactional.
+    const subscription = dedupeProviders([
+      ...(regionData.flatrate || []).map((p: any) => toWatchProvider(p, 'flatrate')),
+      ...(regionData.free || []).map((p: any) => toWatchProvider(p, 'free')),
+      ...(regionData.ads || []).map((p: any) => toWatchProvider(p, 'ads')),
+    ]);
+    const transactional = dedupeProviders([
+      ...(regionData.rent || []).map((p: any) => toWatchProvider(p, 'rent')),
+      ...(regionData.buy || []).map((p: any) => toWatchProvider(p, 'buy')),
+    ]);
+
+    // Merge for the full list (subscription first), keeping kinds merged across all.
+    const allProviders = dedupeProviders([...subscription, ...transactional]);
+
+    if (subscription.length > 0) {
+      const resolution: ProviderResolution = {
+        platform: subscription[0].name,
+        platforms: allProviders,
+      };
+      providerCache.set(cacheKey, resolution);
+      return resolution;
     }
 
-    // Only flatrate (subscription), free, and ads buckets count as a real
-    // streaming-platform badge. rent/buy are transactional and must NOT be
-    // labeled with a subscription platform name.
-    const subscriptionProviders =
-      regionData.flatrate || regionData.free || regionData.ads || [];
-
-    if (subscriptionProviders.length > 0) {
-      // Get the first provider (usually the most popular / display priority)
-      const providerId = subscriptionProviders[0].provider_id;
-      const platformName =
-        PROVIDER_MAP[providerId] || subscriptionProviders[0].provider_name || null;
-
-      providerCache.set(cacheKey, platformName);
-      return platformName;
+    if (transactional.length > 0) {
+      const resolution = rentBuyResolution(allProviders);
+      providerCache.set(cacheKey, resolution);
+      return resolution;
     }
 
-    // Transactional only (rent/buy): mark explicitly so the UI can render a
-    // neutral "RENT/BUY" badge instead of impersonating a subscription.
-    const hasTransactional =
-      (regionData.rent && regionData.rent.length > 0) ||
-      (regionData.buy && regionData.buy.length > 0);
-
-    if (hasTransactional) {
-      providerCache.set(cacheKey, 'Rent/Buy');
-      return 'Rent/Buy';
-    }
-
-    // No providers in any bucket - check if in theatres
-    if (mediaType === 'movie' && isInTheatres(releaseDate)) {
-      providerCache.set(cacheKey, 'Theatre');
-      return 'Theatre';
-    }
-
-    providerCache.set(cacheKey, null);
-    return null;
+    return theatreFallback();
   } catch (error) {
     console.error(`Failed to fetch watch provider for ${mediaType} ${movieId}:`, error);
-    // On error, check if in theatres
-    if (mediaType === 'movie' && isInTheatres(releaseDate)) {
-      providerCache.set(cacheKey, 'Theatre');
-      return 'Theatre';
-    }
-    providerCache.set(cacheKey, null);
-    return null;
+    return theatreFallback();
   }
 };
 
-// Batch fetch watch providers for multiple movies
+// Batch fetch watch providers for multiple movies.
 const fetchWatchProvidersBatch = async (
   movies: Movie[],
   region: string = DEFAULT_WATCH_REGION
-): Promise<Map<number, string | null>> => {
-  const providerMap = new Map<number, string | null>();
+): Promise<Map<number, ProviderResolution>> => {
+  const providerMap = new Map<number, ProviderResolution>();
 
   // Fetch providers in parallel (limit to 10 concurrent requests to avoid rate limiting)
   const batchSize = 10;
@@ -180,132 +256,210 @@ const fetchWatchProvidersBatch = async (
   return providerMap;
 };
 
-// Export function to fetch provider for a single movie (useful for detail views)
+// Attach resolved provider data to a list of movies (keeps `platform`
+// backward-compatible and adds the full `platforms` array).
+const attachProviders = (
+  movies: Movie[],
+  providerMap: Map<number, ProviderResolution>,
+): Movie[] =>
+  movies.map((movie) => {
+    const resolution = providerMap.get(movie.id);
+    return {
+      ...movie,
+      platform: (resolution?.platform as any) || undefined,
+      platforms: resolution?.platforms && resolution.platforms.length > 0
+        ? resolution.platforms
+        : undefined,
+    };
+  });
+
+// Public: resolve providers for an arbitrary list of movies (used by
+// FavoritesModal to refresh stale badges on open).
+export const enrichMoviesWithProviders = async (
+  movies: Movie[],
+  region: string = DEFAULT_WATCH_REGION,
+): Promise<Movie[]> => {
+  if (movies.length === 0) return movies;
+  await ensureNowPlayingSet(region);
+  const providerMap = await fetchWatchProvidersBatch(movies, region);
+  return attachProviders(movies, providerMap);
+};
+
+// Export function to fetch full provider resolution for a single movie
+// (useful for detail views / deep links).
 export const fetchMovieWatchProvider = async (
   movieId: number,
   mediaType: 'movie' | 'tv' = 'movie',
-  region: string = DEFAULT_WATCH_REGION
-): Promise<string | null> => {
-  return fetchWatchProvider(movieId, mediaType, region);
+  region: string = DEFAULT_WATCH_REGION,
+  releaseDate?: string,
+): Promise<ProviderResolution> => {
+  await ensureNowPlayingSet(region);
+  return fetchWatchProvider(movieId, mediaType, region, releaseDate);
 };
 
-// Export function to clear provider cache (useful for region changes)
+// Export function to clear provider cache (useful for region changes). Also
+// clears the now_playing set so theatre detection re-resolves for the new region.
 export const clearProviderCache = (): void => {
   providerCache.clear();
+  nowPlayingIdCache.clear();
 };
 
-const headers = {
-  'Authorization': `Bearer ${ACCESS_TOKEN}`,
-  'Content-Type': 'application/json'
-};
+// Normalize a raw TMDB list item into our Movie shape.
+const normalizeItem = (item: any, fallbackType?: 'movie' | 'tv'): Movie => ({
+  id: item.id,
+  title: item.title || item.name,
+  poster_path: item.poster_path,
+  backdrop_path: item.backdrop_path,
+  overview: item.overview,
+  vote_average: item.vote_average,
+  release_date: item.release_date || item.first_air_date || 'TBA',
+  genre_ids: item.genre_ids || [],
+  media_type: item.media_type || fallbackType || 'movie',
+});
 
-export const fetchMovies = async (page: number, type: MediaType = 'all', genreId?: number): Promise<Movie[]> => {
+export const fetchMovies = async (
+  page: number,
+  type: MediaType = 'all',
+  genreId?: number,
+  region: string = DEFAULT_WATCH_REGION,
+): Promise<Movie[]> => {
   try {
+    // Ensure now_playing set is warm so theatre detection is accurate for cards.
+    await ensureNowPlayingSet(region);
+
+    // "In Theaters" browse mode: current theatrical releases.
+    if (type === 'now_playing') {
+      const res = await tmdbFetch('/movie/now_playing', {
+        language: 'en-US',
+        page,
+        region,
+      });
+      if (!res.ok) throw new Error(`API Error: ${res.status}`);
+      const data: ApiResponse<any> = await res.json();
+      if (!data?.results || !Array.isArray(data.results)) return [];
+      let normalized: Movie[] = data.results.map((item: any) => normalizeItem(item, 'movie'));
+      if (genreId) {
+        normalized = normalized.filter((m) => m.genre_ids.includes(genreId));
+      }
+      if (normalized.length === 0) return [];
+      const providerMap = await fetchWatchProvidersBatch(normalized, region);
+      return attachProviders(normalized, providerMap);
+    }
+
     let endpoint = '';
-    
+
     if (type === 'all') {
       if (genreId) {
         // When genre filter is active, use discover endpoint for both movies and TV
         const [movieRes, tvRes] = await Promise.all([
-          fetch(`${BASE_URL}/discover/movie?include_adult=false&include_video=false&language=en-US&page=${page}&sort_by=popularity.desc&with_genres=${genreId}`, { headers }),
-          fetch(`${BASE_URL}/discover/tv?include_adult=false&include_null_first_air_dates=false&language=en-US&page=${page}&sort_by=popularity.desc&with_genres=${genreId}`, { headers })
+          tmdbFetch('/discover/movie', {
+            include_adult: 'false',
+            include_video: 'false',
+            language: 'en-US',
+            page,
+            sort_by: 'popularity.desc',
+            with_genres: genreId,
+          }),
+          tmdbFetch('/discover/tv', {
+            include_adult: 'false',
+            include_null_first_air_dates: 'false',
+            language: 'en-US',
+            page,
+            sort_by: 'popularity.desc',
+            with_genres: genreId,
+          }),
         ]);
-        
+
         if (!movieRes.ok || !tvRes.ok) {
           throw new Error(`API Error: ${movieRes.status} or ${tvRes.status}`);
         }
-        
+
         const movieData: ApiResponse<any> = await movieRes.json();
         const tvData: ApiResponse<any> = await tvRes.json();
-        
-        // Combine and normalize
+
         const combinedResults = [
           ...movieData.results.map((item: any) => ({ ...item, media_type: 'movie' })),
-          ...tvData.results.map((item: any) => ({ ...item, media_type: 'tv' }))
+          ...tvData.results.map((item: any) => ({ ...item, media_type: 'tv' })),
         ];
-        
-        const normalizedResults: Movie[] = combinedResults.map((item: any) => ({
-          id: item.id,
-          title: item.title || item.name,
-          poster_path: item.poster_path,
-          backdrop_path: item.backdrop_path,
-          overview: item.overview,
-          vote_average: item.vote_average,
-          release_date: item.release_date || item.first_air_date || 'TBA',
-          genre_ids: item.genre_ids,
-          media_type: item.media_type,
-        }));
-        
-        // Fetch watch providers for every page so cards never fall back to N/A on scroll.
-        // Cache + 10-concurrent batching keeps TMDB rate-limit pressure bounded.
-        if (normalizedResults.length > 0) {
-          const providerMap = await fetchWatchProvidersBatch(normalizedResults);
-          return normalizedResults.map(movie => ({
-            ...movie,
-            platform: (providerMap.get(movie.id) as any) || undefined
-          }));
-        }
 
+        const normalizedResults: Movie[] = combinedResults.map((item: any) =>
+          normalizeItem(item, item.media_type));
+
+        if (normalizedResults.length > 0) {
+          const providerMap = await fetchWatchProvidersBatch(normalizedResults, region);
+          return attachProviders(normalizedResults, providerMap);
+        }
         return normalizedResults;
       } else {
-      endpoint = `/trending/all/week?language=en-US&page=${page}`;
+        endpoint = `/trending/all/week`;
       }
-    } else if (type === 'movie') {
-      endpoint = `/discover/movie?include_adult=false&include_video=false&language=en-US&page=${page}&sort_by=popularity.desc`;
-      if (genreId) {
-        endpoint += `&with_genres=${genreId}`;
-      }
+    }
+
+    let params: Record<string, string | number | undefined>;
+    if (type === 'movie') {
+      endpoint = '/discover/movie';
+      params = {
+        include_adult: 'false',
+        include_video: 'false',
+        language: 'en-US',
+        page,
+        sort_by: 'popularity.desc',
+        with_genres: genreId,
+      };
     } else if (type === 'tv') {
-      endpoint = `/discover/tv?include_adult=false&include_null_first_air_dates=false&language=en-US&page=${page}&sort_by=popularity.desc`;
-      if (genreId) {
-        endpoint += `&with_genres=${genreId}`;
-      }
+      endpoint = '/discover/tv';
+      params = {
+        include_adult: 'false',
+        include_null_first_air_dates: 'false',
+        language: 'en-US',
+        page,
+        sort_by: 'popularity.desc',
+        with_genres: genreId,
+      };
+    } else {
+      // trending/all
+      params = { language: 'en-US', page };
     }
 
-    if (!endpoint) {
-      return [];
-    }
+    if (!endpoint) return [];
 
-    const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
-    
-    if (!res.ok) {
-        throw new Error(`API Error: ${res.status}`);
-    }
-    
+    const res = await tmdbFetch(endpoint, params);
+    if (!res.ok) throw new Error(`API Error: ${res.status}`);
+
     const data: ApiResponse<any> = await res.json();
-    
-    if (!data || !data.results || !Array.isArray(data.results)) {
-      return [];
-    }
-    
-    // Normalize data (TV shows use 'name' instead of 'title', 'first_air_date' instead of 'release_date')
-    const normalizedResults: Movie[] = data.results.map((item: any) => ({
-        id: item.id,
-        title: item.title || item.name,
-        poster_path: item.poster_path,
-        backdrop_path: item.backdrop_path,
-        overview: item.overview,
-        vote_average: item.vote_average,
-        release_date: item.release_date || item.first_air_date || 'TBA',
-        genre_ids: item.genre_ids || [],
-        media_type: item.media_type || (type === 'tv' ? 'tv' : 'movie'), // Discover endpoints don't return media_type
-    }));
-    
-    // Fetch watch providers for every page so cards never fall back to N/A on scroll.
-    // Cache + 10-concurrent batching keeps TMDB rate-limit pressure bounded.
+    if (!data || !data.results || !Array.isArray(data.results)) return [];
+
+    const fallbackType = type === 'tv' ? 'tv' : 'movie';
+    const normalizedResults: Movie[] = data.results.map((item: any) =>
+      normalizeItem(item, fallbackType));
+
     if (normalizedResults.length > 0) {
-      const providerMap = await fetchWatchProvidersBatch(normalizedResults);
-      return normalizedResults.map(movie => ({
-        ...movie,
-        platform: (providerMap.get(movie.id) as any) || undefined
-      }));
+      const providerMap = await fetchWatchProvidersBatch(normalizedResults, region);
+      return attachProviders(normalizedResults, providerMap);
     }
-
     return normalizedResults;
-
   } catch (error) {
     console.error("Failed to fetch movies", error);
     return [];
+  }
+};
+
+// Fetch a single title by id (for deep links) and enrich with providers.
+export const fetchMovieById = async (
+  id: number,
+  mediaType: 'movie' | 'tv',
+  region: string = DEFAULT_WATCH_REGION,
+): Promise<Movie | null> => {
+  try {
+    const res = await tmdbFetch(`/${mediaType}/${id}`, { language: 'en-US' });
+    if (!res.ok) return null;
+    const item = await res.json();
+    const movie = normalizeItem({ ...item, media_type: mediaType }, mediaType);
+    const [enriched] = await enrichMoviesWithProviders([movie], region);
+    return enriched || movie;
+  } catch (error) {
+    console.error('Failed to fetch movie by id', error);
+    return null;
   }
 };
 
@@ -347,9 +501,9 @@ const calculateRelevanceScore = (title: string, query: string): number => {
     return 0;
 };
 
-export const searchMovies = async (query: string): Promise<Movie[]> => {
+export const searchMovies = async (query: string, region: string = DEFAULT_WATCH_REGION): Promise<Movie[]> => {
     if (!query) return [];
-    
+
     try {
         const queryTrimmed = query.trim();
         const queryWords = queryTrimmed.split(/\s+/).filter(w => w.length > 0);
@@ -366,9 +520,13 @@ export const searchMovies = async (query: string): Promise<Movie[]> => {
         // Fetch results for all queries in parallel
         const searchPromises = uniqueQueries.map(async (searchQuery) => {
             try {
-                const endpoint = `/search/multi?query=${encodeURIComponent(searchQuery)}&include_adult=false&language=en-US&page=1`;
-        const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
-        
+                const res = await tmdbFetch('/search/multi', {
+                    query: searchQuery,
+                    include_adult: 'false',
+                    language: 'en-US',
+                    page: 1,
+                });
+
                 if (!res.ok) return [];
 
         const data = await res.json();
@@ -423,11 +581,9 @@ export const searchMovies = async (query: string): Promise<Movie[]> => {
         
         // Fetch watch providers for search results (usually fewer results, so we can fetch all)
         if (normalizedResults.length > 0) {
-          const providerMap = await fetchWatchProvidersBatch(normalizedResults);
-          return normalizedResults.map(movie => ({
-            ...movie,
-            platform: (providerMap.get(movie.id) as any) || undefined
-          }));
+          await ensureNowPlayingSet(region);
+          const providerMap = await fetchWatchProvidersBatch(normalizedResults, region);
+          return attachProviders(normalizedResults, providerMap);
         }
 
         return normalizedResults;
@@ -441,9 +597,8 @@ export const searchMovies = async (query: string): Promise<Movie[]> => {
 // Fetch trailer video key from TMDB
 export const fetchTrailer = async (movieId: number, mediaType: 'movie' | 'tv' = 'movie'): Promise<string | null> => {
     try {
-        const endpoint = `/${mediaType}/${movieId}/videos?language=en-US`;
-        const res = await fetch(`${BASE_URL}${endpoint}`, { headers });
-        
+        const res = await tmdbFetch(`/${mediaType}/${movieId}/videos`, { language: 'en-US' });
+
         if (!res.ok) {
             throw new Error(`Trailer API Error: ${res.status}`);
         }

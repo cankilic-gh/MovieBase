@@ -5,10 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../hooks/useFavorites';
 import { useStreamingAlerts } from '../hooks/useStreamingAlerts';
 import { supabase } from '../services/supabaseClient';
+import { tmdbFetch } from '../services/tmdbClient';
 import MovieCard from './MovieCard';
-
-const ACCESS_TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN || '';
-const BASE_URL = 'https://api.themoviedb.org/3';
 
 interface ForYouSectionProps {
   onMovieClick: (m: Movie) => void;
@@ -88,9 +86,9 @@ const ForYouSection: React.FC<ForYouSectionProps> = ({ onMovieClick }) => {
         for (const base of bases) {
           if (collected.length >= 4) break;
           try {
-            const r = await fetch(
-              `${BASE_URL}/${base.media_type}/${base.id}/recommendations?language=en-US&page=1`,
-              { headers: { Authorization: `Bearer ${ACCESS_TOKEN}` } },
+            const r = await tmdbFetch(
+              `/${base.media_type}/${base.id}/recommendations`,
+              { language: 'en-US', page: 1 },
             );
             if (!r.ok) continue;
             const data = await r.json();
