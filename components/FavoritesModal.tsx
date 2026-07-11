@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, Loader2 } from 'lucide-react';
 import { Movie } from '../types';
 import { supabase } from '../services/supabaseClient';
+import { enrichMoviesWithProviders } from '../services/tmdbService';
+import { useRegion } from '../context/RegionContext';
 import MovieCard from './MovieCard';
 
 interface FavoritesModalProps {
@@ -12,6 +14,7 @@ interface FavoritesModalProps {
 }
 
 const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose, onMovieClick }) => {
+  const { region } = useRegion();
   const [favorites, setFavorites] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +47,7 @@ const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose, onMovi
 
       // Remove duplicates by movie_id (keep first occurrence)
       const seenIds = new Set<number>();
-      const uniqueMovies = data?.filter((item: any) => {
+      const uniqueMovies: Movie[] = data?.filter((item: any) => {
         const movieId = item.movie_id;
         if (seenIds.has(movieId)) {
           return false; // Duplicate, skip
@@ -52,8 +55,12 @@ const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose, onMovi
         seenIds.add(movieId);
         return true;
       }).map((item: any) => item.movie_data).filter(Boolean) || [];
-      
-      setFavorites(uniqueMovies);
+
+      // Refresh watch-provider badges for the current region so stale
+      // availability stored in movie_data gets corrected on open. Skeleton
+      // (loading) stays up while this runs.
+      const refreshed = await enrichMoviesWithProviders(uniqueMovies, region);
+      setFavorites(refreshed);
     } catch (err: any) {
       console.error('Failed to load favorites:', err);
       setError(err.message || 'Failed to load favorites');

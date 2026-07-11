@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Movie, MediaType } from '../types';
+import { Movie, MediaType, WatchRegion } from '../types';
 import { fetchMovies, searchMovies } from '../services/tmdbService';
 import MovieCard from './MovieCard';
 import { Loader2, X } from 'lucide-react';
@@ -10,9 +10,10 @@ interface InfiniteScrollGridProps {
   filterType: MediaType;
   onClearSearch?: () => void;
   genreId?: number;
+  region: WatchRegion;
 }
 
-const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, searchQuery, filterType, onClearSearch, genreId }) => {
+const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, searchQuery, filterType, onClearSearch, genreId, region }) => {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -34,23 +35,23 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
     if (node) observer.current.observe(node);
   }, [loading, hasMore]);
 
-  // Reset when search, filter, or genre changes
+  // Reset when search, filter, genre, or region changes
   useEffect(() => {
     setMovies([]);
     setPage(1);
     setHasMore(true);
-  }, [searchQuery, filterType, genreId]);
+  }, [searchQuery, filterType, genreId, region]);
 
   // Data Fetching Logic
   useEffect(() => {
     const loadMovies = async () => {
       setLoading(true);
-      
+
       let newMovies: Movie[] = [];
-      
+
       if (searchQuery) {
         if (page === 1) {
-            newMovies = await searchMovies(searchQuery);
+            newMovies = await searchMovies(searchQuery, region);
             // Filter by genre if active
             if (genreId) {
               newMovies = newMovies.filter(movie => movie.genre_ids.includes(genreId));
@@ -58,7 +59,7 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
             setHasMore(false);
         }
       } else {
-        newMovies = await fetchMovies(page, filterType, genreId);
+        newMovies = await fetchMovies(page, filterType, genreId, region);
         if (newMovies.length === 0) setHasMore(false);
       }
 
@@ -67,14 +68,18 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
     };
 
     loadMovies();
-  }, [page, searchQuery, filterType, genreId]);
+  }, [page, searchQuery, filterType, genreId, region]);
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-mono text-white flex items-center gap-2">
                 <span className="w-2 h-8 bg-cyber-purple block shadow-[0_0_10px_#00F3FF]"></span>
-                {searchQuery ? `Results for "${searchQuery}"` : 'Trending In Sector 01'}
+                {searchQuery
+                  ? `Results for "${searchQuery}"`
+                  : filterType === 'now_playing'
+                    ? 'Now In Theaters'
+                    : 'Trending In Sector 01'}
             </h2>
             <div className="flex items-center gap-3">
                 {searchQuery && onClearSearch && (

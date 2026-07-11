@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Play, Heart, Bell, BellRing } from 'lucide-react';
+import { X, Play, Heart, Bell, BellRing, Link2, Check } from 'lucide-react';
 import { Movie } from '../types';
 import { getBackdropUrl, fetchTrailer } from '../services/tmdbService';
+import ProviderChips, { subscriptionProviders, hasOnlyTransactional } from './ProviderChips';
 import { useFavorites } from '../hooks/useFavorites';
 import { useStreamingAlerts } from '../hooks/useStreamingAlerts';
 import { useAuth } from '../context/AuthContext';
+
+// Canonical share host for shareable deep links.
+const SHARE_BASE_URL = 'https://moviebase.thegridbase.com';
 
 const getPlatformColor = (platform?: string): string => {
   // Subdued color for unknown availability — neutral, not "streaming"
@@ -52,6 +56,7 @@ export const MovieDetailModal: React.FC<MovieDetailModalProps> = ({ movie, onClo
   const [showTrailer, setShowTrailer] = useState(false);
   const [isAddingFavorite, setIsAddingFavorite] = useState(false);
   const [isTogglingAlert, setIsTogglingAlert] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const movieIsFavorite = isFavorite(movie.id);
   const movieHasAlert = hasAlert(movie.id);
@@ -112,6 +117,29 @@ export const MovieDetailModal: React.FC<MovieDetailModalProps> = ({ movie, onClo
       setShowTrailer(true);
     }
   };
+
+  const mediaType = movie.media_type === 'tv' ? 'tv' : 'movie';
+  const shareUrl = `${SHARE_BASE_URL}/#/${mediaType}/${movie.id}`;
+
+  const handleCopyLink = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      // Fallback for browsers without async clipboard access.
+      const el = document.createElement('textarea');
+      el.value = shareUrl;
+      document.body.appendChild(el);
+      el.select();
+      try { document.execCommand('copy'); } catch { /* ignore */ }
+      document.body.removeChild(el);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const subProviders = subscriptionProviders(movie.platforms);
+  const onlyTransactional = hasOnlyTransactional(movie.platforms);
 
   return (
     <motion.div
@@ -184,9 +212,34 @@ export const MovieDetailModal: React.FC<MovieDetailModalProps> = ({ movie, onClo
             <span className="text-gray-400 text-xs font-mono">{movie.release_date}</span>
           </div>
 
+          {/* All available providers as logo chips. Subscription logos are shown
+              first; a subdued Rent/Buy chip appears when only transactional. */}
+          {(subProviders.some((p) => p.logoPath) || onlyTransactional) && (
+            <div className="mb-5">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-gray-500 mb-2">
+                {onlyTransactional && subProviders.length === 0 ? 'Available to' : 'Streaming on'}
+              </p>
+              <ProviderChips
+                providers={movie.platforms || []}
+                size="md"
+                showRentBuyFallback
+              />
+            </div>
+          )}
+
           <div className="flex items-start justify-between mb-4">
             <h2 className="text-3xl font-mono font-bold text-white leading-none flex-1 pr-4">{movie.title}</h2>
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Copy shareable deep link */}
+              <button
+                onClick={handleCopyLink}
+                className={`w-10 h-10 flex items-center justify-center rounded transition-colors ${
+                  copied ? 'text-cyber-green bg-cyber-green/10' : 'hover:text-cyber-cyan bg-white/5'
+                }`}
+                title={copied ? 'Link copied' : 'Copy link'}
+              >
+                {copied ? <Check size={20} /> : <Link2 size={20} />}
+              </button>
               {showAlertButton && (
                 <button
                   onClick={handleToggleAlert}

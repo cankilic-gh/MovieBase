@@ -1,3 +1,13 @@
+// A single watch provider (streaming service / storefront) for a title in a
+// given region, as surfaced by TMDB's /watch/providers endpoint.
+export interface WatchProvider {
+  name: string;
+  logoPath: string | null;
+  // Which TMDB buckets this provider appeared in. Subscription-style buckets
+  // (flatrate/free/ads) rank ahead of transactional ones (rent/buy).
+  kinds: ('flatrate' | 'free' | 'ads' | 'rent' | 'buy')[];
+}
+
 export interface Movie {
   id: number;
   title: string;
@@ -13,7 +23,12 @@ export interface Movie {
   //   'Rent/Buy' -> only available transactionally (rent or buy)
   //   'Theatre'  -> released within last 60 days, no streaming yet
   // undefined -> no availability info known
+  // NOTE: this remains the primary badge field and keeps the sentinel
+  // contract exactly as before, so alert logic and color coding are unchanged.
   platform?: string;
+  // Full, ordered list of relevant providers with logos (subscription first,
+  // then rent/buy). Optional/additive — `platform` is derived from platforms[0].
+  platforms?: WatchProvider[];
 }
 
 export interface Genre {
@@ -29,4 +44,9 @@ export interface ApiResponse<T> {
 }
 
 export type SortOption = 'popularity.desc' | 'vote_average.desc' | 'release_date.desc';
-export type MediaType = 'all' | 'movie' | 'tv';
+// Browse filter modes. 'now_playing' surfaces theatrical releases via TMDB's
+// /movie/now_playing endpoint. All others map to media_type / trending as before.
+export type MediaType = 'all' | 'movie' | 'tv' | 'now_playing';
+
+// Supported watch-provider regions for the Navbar region selector.
+export type WatchRegion = 'US' | 'GB' | 'CA' | 'AU' | 'DE' | 'FR' | 'TR' | 'IN';

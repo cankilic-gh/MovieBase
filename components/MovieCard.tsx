@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Play, Heart, Bell, BellRing } from 'lucide-react';
 import { Movie } from '../types';
 import { getImageUrl, getBackdropUrl } from '../services/tmdbService';
+import ProviderChips, { subscriptionProviders } from './ProviderChips';
 import { useFavorites } from '../hooks/useFavorites';
 import { useStreamingAlerts } from '../hooks/useStreamingAlerts';
 import { useAuth } from '../context/AuthContext';
@@ -217,9 +218,20 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
       <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 z-20 transform ${isFeatured ? 'translate-y-0' : 'translate-y-4 group-hover:translate-y-0'} transition-transform duration-300`}>
         {/* Platform Badge with Neon Styling */}
         <div className="flex items-center gap-2 mb-2">
-            <span className={`px-2 py-1 rounded-sm bg-cyber-black/80 backdrop-blur border border-cyber-cyan/30 text-xs font-bold font-mono uppercase tracking-wider ${getPlatformColor(movie.platform)} group-hover:border-cyber-cyan/50 transition-all duration-300`}>
-                {getPlatformLabel(movie.platform)}
-            </span>
+            {/* When there are 2+ subscription providers with logos, show tiny logo
+                chips alongside the text badge; otherwise the text badge alone. */}
+            {(() => {
+              const subs = subscriptionProviders(movie.platforms);
+              const logoSubs = subs.filter((p) => p.logoPath);
+              if (logoSubs.length >= 2) {
+                return <ProviderChips providers={movie.platforms || []} max={3} size="sm" />;
+              }
+              return (
+                <span className={`px-2 py-1 rounded-sm bg-cyber-black/80 backdrop-blur border border-cyber-cyan/30 text-xs font-bold font-mono uppercase tracking-wider ${getPlatformColor(movie.platform)} group-hover:border-cyber-cyan/50 transition-all duration-300`}>
+                    {getPlatformLabel(movie.platform)}
+                </span>
+              );
+            })()}
             {isFeatured && (
                 <span className="px-2 py-1 rounded-sm bg-cyber-purple/30 border border-cyber-purple/50 text-cyber-purple text-xs font-mono font-black uppercase tracking-wider animate-pulse-neon shadow-neon-purple/50">
                     TRENDING #1
