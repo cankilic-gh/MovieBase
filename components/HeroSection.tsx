@@ -76,12 +76,14 @@ const HeroSection: React.FC<HeroSectionProps> = ({
         {/* Neon Glow Overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-cyber-cyan/10 via-transparent to-cyber-purple/10 z-10 pointer-events-none" />
         
-        <video 
+        <video
             src="/store.mp4"
+            poster="/store-poster.jpg"
             autoPlay
             loop
             muted
             playsInline
+            preload="auto"
             className="w-full h-full object-cover opacity-80"
         />
         
