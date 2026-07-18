@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Heart, Bell, BellRing } from 'lucide-react';
-import { Movie } from '../types';
+import { Movie, TitleRatings } from '../types';
 import { getImageUrl, getBackdropUrl } from '../services/tmdbService';
 import ProviderChips, { subscriptionProviders } from './ProviderChips';
 import { useFavorites } from '../hooks/useFavorites';
@@ -13,9 +13,11 @@ interface MovieCardProps {
   onClick: (movie: Movie) => void;
   variant?: 'standard' | 'featured' | 'large';
   hideHeartButton?: boolean;
+  /** External ratings (IMDb / RT); badges render only when present. */
+  ratings?: TitleRatings | null;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standard', hideHeartButton = false }) => {
+const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standard', hideHeartButton = false, ratings = null }) => {
   const { isLoggedIn } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites(isLoggedIn);
   const { hasAlert, toggleAlert } = useStreamingAlerts(isLoggedIn);
@@ -254,6 +256,22 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, onClick, variant = 'standa
           <span>{movie.release_date?.split('-')[0]}</span>
           <span className="text-cyber-cyan/50">•</span>
           <span>{movie.media_type === 'tv' ? 'Series' : 'Movie'}</span>
+          {ratings?.imdb != null && (
+            <>
+              <span className="text-cyber-cyan/50">•</span>
+              <span className="text-yellow-400 font-bold drop-shadow-[0_0_4px_rgba(250,204,21,0.5)]">
+                ★ {ratings.imdb.toFixed(1)}
+              </span>
+            </>
+          )}
+          {ratings?.rt != null && (
+            <>
+              <span className="text-cyber-cyan/50">•</span>
+              <span className={`font-bold ${ratings.rt >= 60 ? 'text-red-500 drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]' : 'text-green-500 drop-shadow-[0_0_4px_rgba(34,197,94,0.5)]'}`}>
+                🍅 {ratings.rt}%
+              </span>
+            </>
+          )}
           {isFeatured && (
             <>
                 <span className="text-cyber-cyan/50">•</span>

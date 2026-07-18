@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, Play, Heart, Bell, BellRing, Link2, Check } from 'lucide-react';
-import { Movie } from '../types';
+import { Movie, TitleRatings } from '../types';
 import { getBackdropUrl, fetchTrailer } from '../services/tmdbService';
+import { getRatings, ratingsKey } from '../services/ratingsService';
 import ProviderChips, { subscriptionProviders, hasOnlyTransactional } from './ProviderChips';
 import { useFavorites } from '../hooks/useFavorites';
 import { useStreamingAlerts } from '../hooks/useStreamingAlerts';
@@ -48,6 +49,19 @@ interface MovieDetailModalProps {
 }
 
 export const MovieDetailModal: React.FC<MovieDetailModalProps> = ({ movie, onClose }) => {
+  const [extRatings, setExtRatings] = useState<TitleRatings | null>(null);
+
+  // External ratings (IMDb / RT) — cached, so usually instant.
+  useEffect(() => {
+    let cancelled = false;
+    setExtRatings(null);
+    (async () => {
+      const map = await getRatings([movie]);
+      if (!cancelled) setExtRatings(map.get(ratingsKey(movie)) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [movie]);
+
   const { isLoggedIn } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites(isLoggedIn);
   const { hasAlert, toggleAlert } = useStreamingAlerts(isLoggedIn);
@@ -282,11 +296,29 @@ export const MovieDetailModal: React.FC<MovieDetailModalProps> = ({ movie, onClo
             </div>
           </div>
 
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex flex-wrap items-center gap-4 mb-6">
             <div className="flex items-center gap-1 text-cyber-cyan font-mono font-bold">
               <span className="text-lg">{movie.vote_average.toFixed(1)}</span>
-              <span className="text-xs text-gray-500">IMDB</span>
+              <span className="text-xs text-gray-500">TMDB</span>
             </div>
+            {extRatings?.imdb != null && (
+              <>
+                <div className="h-4 w-px bg-gray-700" />
+                <div className="flex items-center gap-1 text-yellow-400 font-mono font-bold">
+                  <span className="text-lg">★ {extRatings.imdb.toFixed(1)}</span>
+                  <span className="text-xs text-gray-500">IMDb</span>
+                </div>
+              </>
+            )}
+            {extRatings?.rt != null && (
+              <>
+                <div className="h-4 w-px bg-gray-700" />
+                <div className={`flex items-center gap-1 font-mono font-bold ${extRatings.rt >= 60 ? 'text-red-500' : 'text-green-500'}`}>
+                  <span className="text-lg">🍅 {extRatings.rt}%</span>
+                  <span className="text-xs text-gray-500">RT</span>
+                </div>
+              </>
+            )}
             <div className="h-4 w-px bg-gray-700" />
             <div className="text-xs text-gray-400 font-mono">
               {movie.media_type === 'tv' ? 'SERIES' : 'MOVIE'}

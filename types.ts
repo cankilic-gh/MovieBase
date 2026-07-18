@@ -44,6 +44,18 @@ export interface ApiResponse<T> {
 }
 
 export type SortOption = 'popularity.desc' | 'vote_average.desc' | 'release_date.desc';
+
+// External ratings for a title (via OMDb), cached in Supabase.
+export interface TitleRatings {
+  imdbId: string | null;
+  /** IMDb rating 0–10, null when unknown. */
+  imdb: number | null;
+  /** Rotten Tomatoes percentage 0–100, null when unknown. */
+  rt: number | null;
+}
+
+// Client-side ordering of the loaded grid.
+export type GridSort = 'default' | 'imdb' | 'rt' | 'tmdb' | 'date';
 // Browse filter modes. 'now_playing' surfaces theatrical releases via TMDB's
 // /movie/now_playing endpoint. All others map to media_type / trending as before.
 export type MediaType = 'all' | 'movie' | 'tv' | 'now_playing';

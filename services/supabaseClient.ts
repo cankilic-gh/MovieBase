@@ -24,3 +24,8 @@ export const supabase = supabaseUrl && supabaseAnonKey && isValidUrl && isValidK
     })
   : createClient('https://placeholder.supabase.co', 'placeholder-key'); // Fallback to prevent crashes
 
+
+// True when real credentials are configured (not the placeholder fallback).
+export const isSupabaseConfigured: boolean = Boolean(
+  supabaseUrl && supabaseAnonKey && isValidUrl && isValidKey,
+);

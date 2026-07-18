@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Movie, MediaType, WatchRegion } from '../types';
+import { Movie, MediaType, WatchRegion, GridSort, TitleRatings } from '../types';
 import { fetchMovies, searchMovies } from '../services/tmdbService';
+import { getRatings, ratingsKey } from '../services/ratingsService';
 import MovieCard from './MovieCard';
 import { Loader2, X } from 'lucide-react';
 
@@ -18,6 +19,8 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [sort, setSort] = useState<GridSort>('default');
+  const [ratings, setRatings] = useState<Map<string, TitleRatings>>(new Map());
   
   // Ref for intersection observer
   const observer = useRef<IntersectionObserver | null>(null);
@@ -70,6 +73,34 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
     loadMovies();
   }, [page, searchQuery, filterType, genreId, region]);
 
+  // Resolve external ratings (IMDb / Rotten Tomatoes) for the loaded titles.
+  // Cached in Supabase + memory, so this is cheap after first resolution.
+  useEffect(() => {
+    if (movies.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const map = await getRatings(movies);
+      if (!cancelled && map.size > 0) {
+        setRatings((prev) => new Map([...prev, ...map]));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [movies]);
+
+  // Client-side ordering of what's loaded. Unrated titles sink to the end so
+  // rating sorts stay meaningful while lookups stream in.
+  const displayMovies = React.useMemo(() => {
+    if (sort === 'default') return movies;
+    const val = (m: Movie): number => {
+      if (sort === 'tmdb') return m.vote_average ?? -1;
+      if (sort === 'date') return new Date(m.release_date || 0).getTime();
+      const r = ratings.get(ratingsKey(m));
+      if (sort === 'imdb') return r?.imdb ?? -1;
+      return r?.rt ?? -1; // 'rt'
+    };
+    return [...movies].sort((a, b) => val(b) - val(a));
+  }, [movies, sort, ratings]);
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
@@ -91,10 +122,34 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
                         CLEAR SEARCH
                     </button>
                 )}
-            <div className="text-xs font-mono text-cyber-cyan border border-cyber-cyan/30 px-2 py-1 rounded bg-cyber-cyan/5">
+            <div className="hidden sm:block text-xs font-mono text-cyber-cyan border border-cyber-cyan/30 px-2 py-1 rounded bg-cyber-cyan/5">
                 {movies.length} TITLES FOUND
                 </div>
             </div>
+        </div>
+
+        {/* Sort selector */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+            <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mr-1">Sort</span>
+            {([
+              ['default', 'TRENDING'],
+              ['imdb', '★ IMDb'],
+              ['rt', '🍅 RT'],
+              ['tmdb', 'TMDB'],
+              ['date', 'NEWEST'],
+            ] as [GridSort, string][]).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setSort(key)}
+                className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold uppercase tracking-wider border transition-colors ${
+                  sort === key
+                    ? 'border-cyber-cyan bg-cyber-cyan/20 text-cyber-cyan shadow-neon-cyan'
+                    : 'border-cyber-cyan/20 text-gray-400 hover:text-cyber-cyan hover:border-cyber-cyan/50'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
         </div>
 
         {/* 
@@ -106,13 +161,13 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
             - Subsequent items: Flow normally.
         */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 auto-rows-auto grid-flow-dense">
-            {movies.map((movie, index) => {
+            {displayMovies.map((movie, index) => {
                 let gridClass = "col-span-1";
                 let cardVariant: 'standard' | 'featured' | 'large' = 'standard';
 
                 // Apply bento layout to the first 6 cards of "Trending" (no search).
                 // Independent of current page so the layout survives infinite-scroll re-renders.
-                const useBentoLayout = !searchQuery;
+                const useBentoLayout = !searchQuery && sort === 'default';
 
                 if (useBentoLayout) {
                      if (index === 0) {
@@ -143,10 +198,11 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
                         movie={movie}
                         onClick={onMovieClick}
                         variant={cardVariant}
+                        ratings={ratings.get(ratingsKey(movie)) ?? null}
                     />
                 );
 
-                if (movies.length === index + 1) {
+                if (displayMovies.length === index + 1) {
                     return (
                         <div ref={lastMovieElementRef} key={`${movie.id}-${index}`} className={gridClass}>
                             {content}
