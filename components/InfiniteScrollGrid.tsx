@@ -167,7 +167,9 @@ const InfiniteScrollGrid: React.FC<InfiniteScrollGridProps> = ({ onMovieClick, s
 
                 // Apply bento layout to the first 6 cards of "Trending" (no search).
                 // Independent of current page so the layout survives infinite-scroll re-renders.
-                const useBentoLayout = !searchQuery && sort === 'default';
+                // Bento (mixed card sizes) everywhere — search, sorted views
+                // and filters all match the Trending layout.
+                const useBentoLayout = true;
 
                 if (useBentoLayout) {
                      if (index === 0) {

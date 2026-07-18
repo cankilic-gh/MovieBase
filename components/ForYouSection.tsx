@@ -152,12 +152,26 @@ const ForYouSection: React.FC<ForYouSectionProps> = ({ onMovieClick }) => {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {recommendations.map((m) => (
-            <div key={m.id} className="aspect-[2/3]">
-              <MovieCard movie={m} onClick={onMovieClick} variant="standard" />
-            </div>
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 auto-rows-auto grid-flow-dense">
+          {recommendations.map((m, index) => {
+            // Same bento rhythm as the main grid: hero, large, quartet, flow.
+            let gridClass = "col-span-1 aspect-[2/3]";
+            let cardVariant: 'standard' | 'featured' | 'large' = 'standard';
+            if (index === 0) {
+              gridClass = "col-span-2 md:col-span-4 h-[50vh] md:h-[600px]";
+              cardVariant = 'featured';
+            } else if (index === 1) {
+              gridClass = "col-span-2 md:col-span-2 md:row-span-2 aspect-[2/3] md:aspect-auto";
+              cardVariant = 'large';
+            } else if (index >= 2 && index <= 5) {
+              gridClass = "col-span-1 md:col-span-1 aspect-[2/3]";
+            }
+            return (
+              <div key={m.id} className={gridClass}>
+                <MovieCard movie={m} onClick={onMovieClick} variant={cardVariant} />
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
